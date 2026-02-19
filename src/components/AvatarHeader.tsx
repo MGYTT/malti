@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 // ── Typy ─────────────────────────────────────────────────
@@ -9,14 +10,15 @@ type Platform = {
   dot:   string;
 };
 
-// ── Platformy wyświetlane w rotacji ──────────────────────
+// ── Platformy w rotacji ───────────────────────────────────
 const PLATFORMS: Platform[] = [
-  { label: "YouTube Creator", color: "#f87171", dot: "#ff0000" },
-  { label: "Content Creator", color: "#67e8f9", dot: "#06b6d4" },
-  { label: "TikTok Creator",  color: "#f9a8d4", dot: "#ff0050" },
+  { label: "Twitch Streamer",  color: "#a78bfa", dot: "#9146ff" },
+  { label: "YouTube Creator",  color: "#f87171", dot: "#ff0000" },
+  { label: "Content Creator",  color: "#67e8f9", dot: "#06b6d4" },
+  { label: "TikTok Creator",   color: "#f9a8d4", dot: "#ff0050" },
 ];
 
-// ── Hook — rotacja tekstu ────────────────────────────────
+// ── Hook — rotacja tekstu ─────────────────────────────────
 function useRotatingText(items: Platform[], interval = 2800) {
   const [index,   setIndex]   = useState(0);
   const [visible, setVisible] = useState(true);
@@ -35,7 +37,7 @@ function useRotatingText(items: Platform[], interval = 2800) {
   return { current: items[index], visible };
 }
 
-// ── Hook — licznik wejścia (mount animation) ─────────────
+// ── Hook — animacja wejścia ───────────────────────────────
 function useMounted(delay = 0) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -45,79 +47,150 @@ function useMounted(delay = 0) {
   return mounted;
 }
 
-// ── Animowany ring avatara ───────────────────────────────
-function AvatarRing() {
+// ── Avatar ze zdjęciem ────────────────────────────────────
+function AvatarImage() {
+  const [loaded,  setLoaded]  = useState(false);
+  const [error,   setError]   = useState(false);
+
   return (
     <div className="relative flex-shrink-0">
-      {/* Zewnętrzny obracający się pierścień */}
+
+      {/* Obracający się gradient ring */}
       <div
-        className="absolute inset-0 rounded-full"
+        aria-hidden="true"
         style={{
-          background:
-            "conic-gradient(from 0deg, #6c63ff, #a855f7, #3b82f6, #6c63ff)",
-          padding: 2,
+          position:     "absolute",
+          inset:        -2,
           borderRadius: "50%",
-          animation: "spinRing 6s linear infinite",
-          opacity: 0.7,
+          background:   "conic-gradient(from 0deg,#6c63ff,#a855f7,#3b82f6,#a855f7,#6c63ff)",
+          animation:    "spinRing 6s linear infinite",
+          opacity:      0.85,
         }}
       />
 
-      {/* Gradient ring statyczny (fallback + głębia) */}
+      {/* Statyczny gradient ring (głębia) */}
       <div
-        className="relative rounded-full p-[3px]"
         style={{
-          background:
-            "linear-gradient(135deg,#6c63ff 0%,#a855f7 50%,#3b82f6 100%)",
-          zIndex: 1,
+          position:     "absolute",
+          inset:        -2,
+          borderRadius: "50%",
+          background:   "linear-gradient(135deg,#6c63ff,#a855f7,#3b82f6)",
+          opacity:      0.3,
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Kontener zdjęcia */}
+      <div
+        style={{
+          position:     "relative",
+          width:         92,
+          height:        92,
+          borderRadius: "50%",
+          overflow:      "hidden",
+          border:        "3px solid #0d0d1a",
+          background:    "linear-gradient(135deg,rgba(108,99,255,0.2),rgba(168,85,247,0.1))",
+          zIndex:        1,
         }}
       >
-        {/* Tło avatara */}
-        <div
-          className="w-[88px] h-[88px] rounded-full flex items-center
-                     justify-center relative overflow-hidden select-none"
-          style={{ background: "#0d0d1a" }}
-        >
-          {/* Subtelny gradient wewnętrzny */}
+        {/* Skeleton — widoczny dopóki zdjęcie się nie załaduje */}
+        {!loaded && !error && (
           <div
-            className="absolute inset-0 rounded-full"
+            aria-hidden="true"
             style={{
-              background:
-                "radial-gradient(circle at 35% 35%, rgba(108,99,255,0.25), transparent 65%)",
+              position:   "absolute",
+              inset:      0,
+              background: "linear-gradient(135deg,rgba(108,99,255,0.15),rgba(168,85,247,0.08))",
+              animation:  "skeletonPulse 1.6s ease-in-out infinite",
             }}
           />
+        )}
 
-          {/* Inicjał */}
-          <span
-            className="relative z-10 text-[34px] font-black text-white
-                       tracking-tighter leading-none"
-            style={{ textShadow: "0 0 20px rgba(108,99,255,0.6)" }}
+        {/* Fallback — litera M gdy brak zdjęcia */}
+        {error && (
+          <div
+            style={{
+              position:        "absolute",
+              inset:           0,
+              display:         "flex",
+              alignItems:      "center",
+              justifyContent:  "center",
+              background:      "linear-gradient(135deg,rgba(108,99,255,0.2),rgba(168,85,247,0.1))",
+            }}
           >
-            M
-          </span>
-        </div>
-      </div>
+            <span
+              style={{
+                fontFamily:  "'Inter', sans-serif",
+                fontSize:    "32px",
+                fontWeight:  900,
+                color:       "white",
+                textShadow:  "0 0 20px rgba(108,99,255,0.6)",
+                lineHeight:  1,
+                userSelect:  "none",
+              }}
+            >
+              M
+            </span>
+          </div>
+        )}
 
-      {/* Pulsująca zielona kropka — status online */}
-      <div
-        className="absolute bottom-1 right-1 z-20"
-        title="Online"
-        aria-label="Status: Online"
-      >
-        <span
-          className="block w-3.5 h-3.5 rounded-full"
+        {/* Zdjęcie profilowe */}
+        {!error && (
+          <Image
+            src="/avatar.jpg"
+            alt="MALTIXON — zdjęcie profilowe"
+            fill
+            sizes="92px"
+            priority
+            quality={90}
+            style={{
+              objectFit:  "cover",
+              borderRadius: "50%",
+              opacity:    loaded ? 1 : 0,
+              transition: "opacity 0.4s ease",
+            }}
+            onLoad={() => setLoaded(true)}
+            onError={() => setError(true)}
+          />
+        )}
+
+        {/* Subtelna winietka wewnętrzna */}
+        <div
+          aria-hidden="true"
           style={{
-            background:  "#22c55e",
-            border:      "2px solid #0d0d1a",
-            boxShadow:   "0 0 0 0 rgba(34,197,94,0.6)",
-            animation:   "pulse 2.2s ease-out infinite",
+            position:      "absolute",
+            inset:         0,
+            borderRadius:  "50%",
+            boxShadow:     "inset 0 0 12px rgba(0,0,0,0.35)",
+            pointerEvents: "none",
+            zIndex:        2,
           }}
         />
       </div>
+
+      {/* Status online — zielona kropka */}
+      <div
+        aria-label="Status: Online"
+        title="Online"
+        style={{
+          position:     "absolute",
+          bottom:       4,
+          right:        4,
+          zIndex:       10,
+          width:        14,
+          height:       14,
+          borderRadius: "50%",
+          background:   "#22c55e",
+          border:       "2.5px solid #0d0d1a",
+          boxShadow:    "0 0 0 0 rgba(34,197,94,0.6)",
+          animation:    "pulseDotGreen 2.2s ease-out infinite",
+        }}
+      />
     </div>
   );
 }
 
-// ── Badge komponent ──────────────────────────────────────
+// ── Badge komponent ───────────────────────────────────────
 function Badge({
   children,
   variant = "purple",
@@ -127,97 +200,145 @@ function Badge({
 }) {
   const styles = {
     purple: {
-      background:  "rgba(108,99,255,0.15)",
-      border:      "1px solid rgba(108,99,255,0.3)",
-      color:       "#a78bfa",
+      background: "rgba(108,99,255,0.15)",
+      border:     "1px solid rgba(108,99,255,0.3)",
+      color:      "#a78bfa",
     },
     green: {
-      background:  "rgba(34,197,94,0.1)",
-      border:      "1px solid rgba(34,197,94,0.3)",
-      color:       "#4ade80",
+      background: "rgba(34,197,94,0.1)",
+      border:     "1px solid rgba(34,197,94,0.3)",
+      color:      "#4ade80",
     },
     blue: {
-      background:  "rgba(59,130,246,0.12)",
-      border:      "1px solid rgba(59,130,246,0.3)",
-      color:       "#93c5fd",
+      background: "rgba(59,130,246,0.12)",
+      border:     "1px solid rgba(59,130,246,0.3)",
+      color:      "#93c5fd",
     },
   } as const;
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full
-                 text-[10px] font-bold tracking-widest uppercase"
-      style={styles[variant]}
+      style={{
+        display:       "inline-flex",
+        alignItems:    "center",
+        gap:           4,
+        padding:       "3px 10px",
+        borderRadius:  9999,
+        fontSize:      "9px",
+        fontWeight:    700,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase" as const,
+        userSelect:    "none",
+        whiteSpace:    "nowrap" as const,
+        ...styles[variant],
+      }}
     >
       {children}
     </span>
   );
 }
 
-// ── Główny komponent ─────────────────────────────────────
+// ── Główny komponent ──────────────────────────────────────
 export default function AvatarHeader() {
   const { current, visible } = useRotatingText(PLATFORMS);
-  const mounted = useMounted(100);
+  const mounted              = useMounted(120);
 
   return (
     <>
-      {/* Keyframes — inline w <style> */}
       <style>{`
         @keyframes spinRing {
           from { transform: rotate(0deg);   }
           to   { transform: rotate(360deg); }
         }
-        @keyframes pulse {
-          0%   { box-shadow: 0 0 0 0   rgba(34,197,94,0.55); }
-          70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0);    }
-          100% { box-shadow: 0 0 0 0   rgba(34,197,94,0);    }
+        @keyframes pulseDotGreen {
+          0%   { box-shadow: 0 0 0 0   rgba(34,197,94,0.6); }
+          70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0);   }
+          100% { box-shadow: 0 0 0 0   rgba(34,197,94,0);   }
         }
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(6px); }
-          to   { opacity: 1; transform: translateY(0);   }
+        @keyframes skeletonPulse {
+          0%,100% { opacity: 1;   }
+          50%     { opacity: 0.4; }
         }
       `}</style>
 
       <div
-        className="flex items-center gap-5 mb-5"
         style={{
+          display:    "flex",
+          alignItems: "center",
+          gap:        "clamp(14px, 4vw, 20px)",
+          marginBottom: 20,
           opacity:    mounted ? 1 : 0,
           transform:  mounted ? "translateY(0)" : "translateY(12px)",
           transition: "opacity 0.5s ease, transform 0.5s ease",
         }}
       >
         {/* Avatar */}
-        <AvatarRing />
+        <AvatarImage />
 
-        {/* Prawa strona */}
-        <div className="flex flex-col gap-2 min-w-0">
-
+        {/* Prawa strona — tekst */}
+        <div
+          style={{
+            display:       "flex",
+            flexDirection: "column",
+            gap:           8,
+            minWidth:      0,
+          }}
+        >
           {/* Nazwa */}
           <h1
-            className="text-[23px] font-black text-white tracking-tight
-                       leading-none m-0"
-            style={{ textShadow: "0 0 30px rgba(108,99,255,0.3)" }}
+            style={{
+              fontFamily:    "'Inter', sans-serif",
+              fontSize:      "clamp(20px, 5.5vw, 26px)",
+              fontWeight:    900,
+              color:         "#ffffff",
+              letterSpacing: "-0.025em",
+              lineHeight:    1,
+              margin:        0,
+              textShadow:    "0 0 30px rgba(108,99,255,0.3)",
+              userSelect:    "none",
+            }}
           >
             MALTIXON
           </h1>
 
-          {/* Rotujący tytuł */}
-          <div className="flex items-center gap-2 h-5">
+          {/* Rotujący tytuł platformy */}
+          <div
+            style={{
+              display:    "flex",
+              alignItems: "center",
+              gap:        7,
+              height:     18,
+            }}
+          >
             {/* Kolorowa kropka platformy */}
             <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-300"
-              style={{ background: current.dot }}
-            />
-            <span
-              className="text-[12px] font-semibold transition-all duration-300"
               style={{
-                color:    current.color,
-                opacity:  visible ? 1 : 0,
-                transform: visible
+                display:      "block",
+                width:        6,
+                height:       6,
+                borderRadius: "50%",
+                flexShrink:   0,
+                background:   current.dot,
+                boxShadow:    `0 0 6px ${current.dot}`,
+                transition:   "background 0.4s ease, box-shadow 0.4s ease",
+              }}
+            />
+
+            {/* Tekst platformy */}
+            <span
+              style={{
+                fontFamily:    "'Inter', sans-serif",
+                fontSize:      "12px",
+                fontWeight:    600,
+                letterSpacing: "0.01em",
+                color:         current.color,
+                opacity:       visible ? 1 : 0,
+                transform:     visible
                   ? "translateY(0px)"
                   : "translateY(-5px)",
                 transition:
                   "opacity 0.3s ease, transform 0.3s ease, color 0.4s ease",
+                userSelect:    "none",
               }}
             >
               {current.label}
@@ -225,9 +346,16 @@ export default function AvatarHeader() {
           </div>
 
           {/* Badges */}
-          <div className="flex gap-1.5 flex-wrap">
+          <div
+            style={{
+              display:   "flex",
+              gap:       6,
+              flexWrap:  "wrap" as const,
+            }}
+          >
             <Badge variant="purple">🎮 Streamer</Badge>
             <Badge variant="green">🇵🇱 Polska</Badge>
+            <Badge variant="blue">⚡ V2</Badge>
           </div>
         </div>
       </div>
