@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useEffect, useRef, useState,
+  useCallback, useMemo,
+} from "react";
 
 import Background    from "@/components/Background";
 import AvatarHeader  from "@/components/AvatarHeader";
@@ -11,18 +14,19 @@ import CollabSection from "@/components/CollabSection";
 import LoadingScreen from "@/components/LoadingScreen";
 
 // ── Typy ─────────────────────────────────────────────────
-type AppPhase = "loading" | "ready";
+type AppPhase = "loading" | "entering" | "ready";
 
 type Section = {
   id:    string;
   label: string;
+  icon:  string;
 };
 
-// ── Sekcje nawigacji ──────────────────────────────────────
+// ── Sekcje ────────────────────────────────────────────────
 const SECTIONS: Section[] = [
-  { id: "profile",    label: "Profil"      },
-  { id: "links",      label: "Linki"       },
-  { id: "collab",     label: "Współpraca"  },
+  { id: "profile", label: "Profil",     icon: "◉" },
+  { id: "links",   label: "Linki",      icon: "⬡" },
+  { id: "collab",  label: "Współpraca", icon: "✦" },
 ];
 
 // ── Hook — aktywna sekcja ─────────────────────────────────
@@ -31,21 +35,16 @@ function useActiveSection(ids: string[]) {
 
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
-
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
-
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) setActive(id);
-        },
-        { threshold: 0.35, rootMargin: "-10% 0px -50% 0px" }
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActive(id); },
+        { threshold: 0.3, rootMargin: "-10% 0px -50% 0px" },
       );
-      observer.observe(el);
-      observers.push(observer);
+      obs.observe(el);
+      observers.push(obs);
     });
-
     return () => observers.forEach((o) => o.disconnect());
   }, [ids]);
 
@@ -53,37 +52,35 @@ function useActiveSection(ids: string[]) {
 }
 
 // ── Hook — scroll progress ────────────────────────────────
-function useScrollProgress(containerRef: React.RefObject<HTMLDivElement>) {
+function useScrollProgress(ref: React.RefObject<HTMLDivElement>) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const el = containerRef.current;
+    const el = ref.current;
     if (!el) return;
-
-    function onScroll() {
-      if (!el) return;
+    const onScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = el;
       const max = scrollHeight - clientHeight;
       setProgress(max > 0 ? scrollTop / max : 0);
-    }
-
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [containerRef]);
+  }, [ref]);
 
   return progress;
 }
 
-// ── Hook — mount animation sequence ──────────────────────
+// ── Hook — mount sequence ─────────────────────────────────
 function useMountSequence(active: boolean) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     if (!active) return;
     const timers = [
-      setTimeout(() => setStep(1), 80),
-      setTimeout(() => setStep(2), 220),
-      setTimeout(() => setStep(3), 380),
+      setTimeout(() => setStep(1),  60),
+      setTimeout(() => setStep(2), 200),
+      setTimeout(() => setStep(3), 360),
+      setTimeout(() => setStep(4), 520),
     ];
     return () => timers.forEach(clearTimeout);
   }, [active]);
@@ -91,21 +88,49 @@ function useMountSequence(active: boolean) {
   return step;
 }
 
+// ── Hook — element in viewport ────────────────────────────
+function useInView(threshold = 0.15) {
+  const ref     = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { threshold },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
 // ── Scroll progress bar ───────────────────────────────────
 function ScrollProgressBar({ progress }: { progress: number }) {
   return (
     <div
       aria-hidden="true"
-      className="fixed top-0 left-0 right-0 z-50"
-      style={{ height: 2, background: "rgba(255,255,255,0.04)" }}
+      style={{
+        position:   "fixed",
+        top:        0,
+        left:       0,
+        right:      0,
+        zIndex:     50,
+        height:     2,
+        background: "rgba(255,255,255,0.04)",
+      }}
     >
       <div
         style={{
           height:     "100%",
           width:      `${progress * 100}%`,
           background: "linear-gradient(90deg,#6c63ff,#a855f7,#3b82f6)",
-          transition: "width 0.12s linear",
-          boxShadow:  "0 0 10px rgba(108,99,255,0.7)",
+          transition: "width 0.1s linear",
+          boxShadow:  progress > 0
+            ? "0 0 12px rgba(108,99,255,0.7)"
+            : "none",
         }}
       />
     </div>
@@ -122,47 +147,71 @@ function SideNav({
   active:       string;
   containerRef: React.RefObject<HTMLDivElement>;
 }) {
-  const scrollTo = useCallback(
-    (id: string) => {
-      const el  = document.getElementById(id);
-      const cnt = containerRef.current;
-      if (!el || !cnt) return;
-      cnt.scrollTo({ top: el.offsetTop - 32, behavior: "smooth" });
-    },
-    [containerRef]
-  );
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const scrollTo = useCallback((id: string) => {
+    const el  = document.getElementById(id);
+    const cnt = containerRef.current;
+    if (!el || !cnt) return;
+    cnt.scrollTo({ top: el.offsetTop - 32, behavior: "smooth" });
+  }, [containerRef]);
 
   return (
     <nav
       aria-label="Nawigacja sekcji"
-      className="fixed right-4 z-40 hidden sm:flex flex-col gap-3.5"
-      style={{ top: "50%", transform: "translateY(-50%)" }}
+      style={{
+        position:       "fixed",
+        right:          16,
+        top:            "50%",
+        transform:      "translateY(-50%)",
+        zIndex:         40,
+        display:        "flex",
+        flexDirection:  "column",
+        gap:            14,
+      }}
     >
       {sections.map((s) => {
-        const isActive = active === s.id;
+        const isActive  = active === s.id;
+        const isHovered = hoveredId === s.id;
+
         return (
           <button
             key={s.id}
             onClick={() => scrollTo(s.id)}
+            onMouseEnter={() => setHoveredId(s.id)}
+            onMouseLeave={() => setHoveredId(null)}
             title={s.label}
             aria-label={s.label}
             aria-current={isActive ? "true" : undefined}
-            className="group relative flex items-center justify-end gap-2
-                       outline-none focus-visible:ring-2
-                       focus-visible:ring-violet-500 rounded-full"
+            style={{
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "flex-end",
+              gap:            7,
+              background:     "none",
+              border:         "none",
+              cursor:         "pointer",
+              padding:        0,
+              outline:        "none",
+            }}
           >
-            {/* Label */}
+            {/* Label — slide in on hover/active */}
             <span
               style={{
                 fontFamily:    "'Inter', sans-serif",
-                fontSize:      "10px",
+                fontSize:      "9.5px",
                 fontWeight:    600,
-                letterSpacing: "0.06em",
-                color:         isActive
-                  ? "rgba(255,255,255,0.65)"
+                letterSpacing: "0.08em",
+                color:         (isActive || isHovered)
+                  ? "rgba(255,255,255,0.7)"
                   : "rgba(255,255,255,0)",
-                transition:    "color 0.22s ease",
+                transform:     (isActive || isHovered)
+                  ? "translateX(0)"
+                  : "translateX(6px)",
+                opacity:       (isActive || isHovered) ? 1 : 0,
+                transition:    "all 0.25s cubic-bezier(.22,1,.36,1)",
                 userSelect:    "none",
+                whiteSpace:    "nowrap",
               }}
             >
               {s.label}
@@ -171,20 +220,24 @@ function SideNav({
             {/* Dot */}
             <div
               style={{
-                width:      isActive ? 10 : 6,
-                height:     isActive ? 10 : 6,
+                width:        isActive ? 10 : isHovered ? 8 : 6,
+                height:       isActive ? 10 : isHovered ? 8 : 6,
                 borderRadius: "50%",
-                flexShrink:  0,
-                background:  isActive
+                flexShrink:   0,
+                background:   isActive
                   ? "linear-gradient(135deg,#6c63ff,#a855f7)"
+                  : isHovered
+                  ? "rgba(108,99,255,0.6)"
                   : "rgba(255,255,255,0.22)",
-                boxShadow:   isActive
-                  ? "0 0 10px rgba(108,99,255,0.8)"
+                boxShadow:    isActive
+                  ? "0 0 12px rgba(108,99,255,0.9)"
+                  : isHovered
+                  ? "0 0 8px rgba(108,99,255,0.5)"
                   : "none",
-                border:      isActive
-                  ? "none"
-                  : "1px solid rgba(255,255,255,0.15)",
-                transition:  "all 0.3s cubic-bezier(.34,1.56,.64,1)",
+                border:       (!isActive && !isHovered)
+                  ? "1px solid rgba(255,255,255,0.14)"
+                  : "none",
+                transition:   "all 0.3s cubic-bezier(.34,1.56,.64,1)",
               }}
             />
           </button>
@@ -197,22 +250,29 @@ function SideNav({
 // ── Section divider ───────────────────────────────────────
 function SectionDivider({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 py-0.5">
+    <div
+      style={{
+        display:        "flex",
+        alignItems:     "center",
+        gap:            10,
+        padding:        "2px 0",
+      }}
+    >
       <div
         style={{
           flex:       1,
           height:     1,
-          background: "linear-gradient(90deg,rgba(108,99,255,0.22),transparent)",
+          background: "linear-gradient(90deg,rgba(108,99,255,0.25),transparent)",
         }}
       />
       <span
         style={{
           fontFamily:    "'Inter', sans-serif",
-          fontSize:      "9px",
+          fontSize:      "8.5px",
           fontWeight:    700,
-          letterSpacing: "0.16em",
+          letterSpacing: "0.18em",
           textTransform: "uppercase" as const,
-          color:         "rgba(255,255,255,0.18)",
+          color:         "rgba(255,255,255,0.2)",
           userSelect:    "none",
         }}
       >
@@ -222,9 +282,96 @@ function SectionDivider({ label }: { label: string }) {
         style={{
           flex:       1,
           height:     1,
-          background: "linear-gradient(90deg,transparent,rgba(108,99,255,0.22))",
+          background: "linear-gradient(90deg,transparent,rgba(108,99,255,0.25))",
         }}
       />
+    </div>
+  );
+}
+
+// ── Animated section — wchodzi gdy w viewport ─────────────
+function FadeSection({
+  delay   = 0,
+  translateY = 14,
+  children,
+}: {
+  delay?:      number;
+  translateY?: number;
+  children:    React.ReactNode;
+}) {
+  const { ref, inView } = useInView(0.1);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity:    inView ? 1 : 0,
+        transform:  inView
+          ? "translateY(0px)"
+          : `translateY(${translateY}px)`,
+        transition: `opacity 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms,
+                     transform 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Enter animation wrapper — dla pierwszego renderu ──────
+function EnterSection({
+  step,
+  minStep,
+  delay   = 0,
+  children,
+}: {
+  step:     number;
+  minStep:  number;
+  delay?:   number;
+  children: React.ReactNode;
+}) {
+  const show = step >= minStep;
+
+  return (
+    <div
+      style={{
+        opacity:    show ? 1 : 0,
+        transform:  show ? "translateY(0px) scale(1)" : "translateY(14px) scale(0.99)",
+        transition: `opacity 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms,
+                     transform 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Karta główna ──────────────────────────────────────────
+function MainCard({
+  step,
+  children,
+}: {
+  step:     number;
+  children: React.ReactNode;
+}) {
+  const show = step >= 1;
+
+  return (
+    <div
+      className="glass"
+      style={{
+        opacity:    show ? 1 : 0,
+        transform:  show
+          ? "translateY(0px) scale(1)"
+          : "translateY(32px) scale(0.97)",
+        transition:
+          "opacity 0.7s cubic-bezier(.22,1,.36,1), " +
+          "transform 0.7s cubic-bezier(.22,1,.36,1)",
+        // GPU acceleration
+        willChange: show ? "auto" : "opacity, transform",
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -233,78 +380,52 @@ function SectionDivider({ label }: { label: string }) {
 function Footer({ visible }: { visible: boolean }) {
   return (
     <div
-      className="text-center pb-8 pt-3"
       style={{
+        textAlign:  "center",
+        padding:    "12px 0 32px",
         opacity:    visible ? 1 : 0,
-        transition: "opacity 0.5s ease 0.4s",
+        transform:  visible ? "translateY(0)" : "translateY(8px)",
+        transition: "opacity 0.5s ease 0.5s, transform 0.5s ease 0.5s",
       }}
     >
       <p
         style={{
           fontFamily:    "'Inter', sans-serif",
           fontSize:      "10px",
-          color:         "rgba(255,255,255,0.14)",
+          color:         "rgba(255,255,255,0.13)",
           fontWeight:    500,
           letterSpacing: "0.04em",
           userSelect:    "none",
+          lineHeight:    1.6,
         }}
       >
         © {new Date().getFullYear()} MALTIXON
-        <span style={{ margin: "0 8px", opacity: 0.5 }}>•</span>
+        <span style={{ margin: "0 7px", opacity: 0.4 }}>•</span>
         Wszelkie prawa zastrzeżone
-        <span style={{ margin: "0 8px", opacity: 0.5 }}>•</span>
-        <span style={{ color: "rgba(108,99,255,0.5)" }}>v2.0</span>
+        <span style={{ margin: "0 7px", opacity: 0.4 }}>•</span>
+        <span style={{ color: "rgba(108,99,255,0.45)" }}>v2.0</span>
       </p>
     </div>
   );
 }
 
-// ── Card Wrapper ──────────────────────────────────────────
-function CardWrapper({
-  step,
-  children,
-}: {
-  step:     number;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="glass"
-      style={{
-        opacity:    step >= 1 ? 1 : 0,
-        transform:  step >= 1
-          ? "translateY(0px) scale(1)"
-          : "translateY(28px) scale(0.96)",
-        transition:
-          "opacity 0.65s cubic-bezier(.22,1,.36,1), " +
-          "transform 0.65s cubic-bezier(.22,1,.36,1)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+// ── Overlay — page transition po LoadingScreen ────────────
+function PageTransitionOverlay({ phase }: { phase: AppPhase }) {
+  const visible = phase === "entering";
 
-// ── Animated Section ──────────────────────────────────────
-function AnimatedSection({
-  show,
-  delay = 0,
-  children,
-}: {
-  show:     boolean;
-  delay?:   number;
-  children: React.ReactNode;
-}) {
   return (
     <div
+      aria-hidden="true"
       style={{
-        opacity:    show ? 1 : 0,
-        transform:  show ? "translateY(0)" : "translateY(12px)",
-        transition: `opacity 0.5s ease ${delay}ms, transform 0.5s ease ${delay}ms`,
+        position:      "fixed",
+        inset:         0,
+        zIndex:        9998,
+        background:    "#07070f",
+        opacity:       visible ? 1 : 0,
+        pointerEvents: visible ? "all" : "none",
+        transition:    "opacity 0.55s cubic-bezier(.22,1,.36,1)",
       }}
-    >
-      {children}
-    </div>
+    />
   );
 }
 
@@ -314,21 +435,26 @@ export default function Home() {
   const containerRef      = useRef<HTMLDivElement>(null);
   const progress          = useScrollProgress(containerRef);
   const step              = useMountSequence(phase === "ready");
-  const active            = useActiveSection(SECTIONS.map((s) => s.id));
+  const sectionIds        = useMemo(() => SECTIONS.map((s) => s.id), []);
+  const active            = useActiveSection(sectionIds);
 
-  // ── Faza: Loading Screen ──────────────────────────────
+  // Loading → entering → ready
+  const handleLoadComplete = useCallback(() => {
+    setPhase("entering");
+    // Krótki beat — overlay znika płynnie
+    setTimeout(() => setPhase("ready"), 80);
+  }, []);
+
   if (phase === "loading") {
-    return (
-      <LoadingScreen
-        onComplete={() => setPhase("ready")}
-      />
-    );
+    return <LoadingScreen onComplete={handleLoadComplete} />;
   }
 
-  // ── Faza: Ready ───────────────────────────────────────
   return (
     <>
-      {/* Pasek postępu scrollowania */}
+      {/* Overlay przejścia */}
+      <PageTransitionOverlay phase={phase} />
+
+      {/* Pasek scrollowania */}
       <ScrollProgressBar progress={progress} />
 
       {/* Nawigacja boczna */}
@@ -338,76 +464,104 @@ export default function Home() {
         containerRef={containerRef}
       />
 
-      {/* Tło animowane */}
+      {/* Tło */}
       <Background />
 
-      {/* Główny kontener scrollowania */}
+      {/* Kontener scrollowania */}
       <div
         ref={containerRef}
         className="relative z-10 w-full h-screen overflow-y-auto
                    scroll-container"
+        style={{ scrollBehavior: "smooth" }}
       >
-        <div className="flex justify-center px-4 py-10 min-h-full">
-          <div className="w-full max-w-[420px] flex flex-col">
+        <div
+          style={{
+            display:        "flex",
+            justifyContent: "center",
+            padding:        "clamp(28px, 5vw, 48px) 16px",
+            minHeight:      "100%",
+          }}
+        >
+          <div
+            style={{
+              width:    "100%",
+              maxWidth: 420,
+              display:  "flex",
+              flexDirection: "column",
+              gap:      16,
+            }}
+          >
 
             {/* ════ KARTA GŁÓWNA ════ */}
-            <CardWrapper step={step}>
+            <MainCard step={step}>
 
               {/* ══ PROFIL ══════════════════════════ */}
               <section
                 id="profile"
                 aria-label="Profil MALTIXON"
-                className="px-6 pt-7 pb-5"
+                style={{ padding: "clamp(20px, 5vw, 28px) clamp(16px, 5vw, 24px) 20px" }}
               >
-                <AnimatedSection show={step >= 1} delay={50}>
+                {/* Avatar — wchodzi jako pierwszy */}
+                <EnterSection step={step} minStep={1} delay={40}>
                   <AvatarHeader />
-                </AnimatedSection>
+                </EnterSection>
 
-                <AnimatedSection show={step >= 2} delay={100}>
+                {/* Stats */}
+                <EnterSection step={step} minStep={2} delay={80}>
                   <StatsRow />
-                </AnimatedSection>
+                </EnterSection>
 
-                <AnimatedSection show={step >= 2} delay={160}>
-                  <div className="divider my-5" />
-                  <p className="section-label">
+                {/* Social icons */}
+                <EnterSection step={step} minStep={2} delay={140}>
+                  <div
+                    style={{
+                      height:     1,
+                      background: "rgba(255,255,255,0.05)",
+                      margin:     "18px 0 16px",
+                    }}
+                  />
+                  <p
+                    className="section-label"
+                    style={{ marginBottom: 10 }}
+                  >
                     Media społecznościowe
                   </p>
                   <SocialIcons />
-                </AnimatedSection>
+                </EnterSection>
               </section>
 
               {/* ══ LINKI ════════════════════════════ */}
               <section
                 id="links"
                 aria-label="Linki MALTIXON"
-                className="px-6 pb-5"
+                style={{ padding: "0 clamp(16px, 5vw, 24px) 20px" }}
               >
-                <AnimatedSection show={step >= 3} delay={60}>
+                <FadeSection delay={0}>
                   <SectionDivider label="Linki" />
-                  <div className="mt-3">
+                  <div style={{ marginTop: 12 }}>
                     <LinksList />
                   </div>
-                </AnimatedSection>
+                </FadeSection>
               </section>
 
               {/* ══ WSPÓŁPRACA ═══════════════════════ */}
               <section
                 id="collab"
                 aria-label="Współpraca z MALTIXON"
-                className="px-6 pb-7"
+                style={{ padding: "0 clamp(16px, 5vw, 24px) clamp(20px, 5vw, 28px)" }}
               >
-                <AnimatedSection show={step >= 3} delay={120}>
+                <FadeSection delay={60}>
                   <SectionDivider label="Współpraca" />
-                  <div className="mt-3">
+                  <div style={{ marginTop: 12 }}>
                     <CollabSection />
                   </div>
-                </AnimatedSection>
+                </FadeSection>
               </section>
 
-            </CardWrapper>
+            </MainCard>
 
             {/* Footer */}
-            <Footer visible={step >= 3} />
+            <Footer visible={step >= 4} />
 
           </div>
         </div>
