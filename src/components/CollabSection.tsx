@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ── Typy ─────────────────────────────────────────────────
 type ContactItem = {
@@ -9,16 +9,41 @@ type ContactItem = {
   label:    string;
   value:    string;
   href:     string;
-  icon:     React.ReactNode;
   hint:     string;
+  color:    string;
+  glow:     string;
 };
 
 type CopyState = "idle" | "copying" | "success" | "error";
 
+// ── Dane kontaktowe ───────────────────────────────────────
+const CONTACTS: ContactItem[] = [
+  {
+    id:    "discord",
+    type:  "discord",
+    label: "Discord",
+    value: "maltixon69",
+    href:  "https://discord.gg/FqAB4cB4pB",
+    hint:  "Napisz DM lub dołącz do serwera",
+    color: "#7289da",
+    glow:  "rgba(114,137,218,0.25)",
+  },
+  {
+    id:    "email",
+    type:  "email",
+    label: "E-mail",
+    value: "premkamaltiego@gmail.com",
+    href:  "mailto:premkamaltiego@gmail.com",
+    hint:  "Odpowiedź w ciągu 24–48h",
+    color: "#a78bfa",
+    glow:  "rgba(167,139,250,0.25)",
+  },
+];
+
 // ── Ikony SVG ─────────────────────────────────────────────
-function DiscordIcon() {
+function DiscordIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="#7289da">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#7289da" aria-hidden="true">
       <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0
                0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0
                0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0
@@ -43,12 +68,13 @@ function DiscordIcon() {
   );
 }
 
-function EmailIcon() {
+function EmailIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-         stroke="rgba(167,139,250,0.9)" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="#a78bfa" strokeWidth="1.8"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2
+               2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
       <polyline points="22,6 12,13 2,6"/>
     </svg>
   );
@@ -56,9 +82,9 @@ function EmailIcon() {
 
 function CopyIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2.2"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
     </svg>
@@ -67,128 +93,95 @@ function CopyIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
          stroke="currentColor" strokeWidth="3"
-         strokeLinecap="round" strokeLinejoin="round">
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <polyline points="20 6 9 17 4 12"/>
     </svg>
   );
 }
 
-function SpinnerIcon() {
+function ExternalIcon({ size = 11 }: { size?: number }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" strokeWidth="2.5"
-         strokeLinecap="round"
-         style={{ animation: "spin 0.7s linear infinite" }}>
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83
-               M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2.2"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
     </svg>
   );
 }
 
-function ErrorIcon() {
+function ClockIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" strokeWidth="2.5"
-         strokeLinecap="round" strokeLinejoin="round">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+         stroke="rgba(255,255,255,0.22)" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10"/>
-      <line x1="15" y1="9" x2="9" y2="15"/>
-      <line x1="9" y1="9" x2="15" y2="15"/>
+      <polyline points="12 6 12 12 16 14"/>
     </svg>
   );
 }
 
-// ── Dane kontaktowe ───────────────────────────────────────
-const CONTACTS: ContactItem[] = [
-  {
-    id:    "discord",
-    type:  "discord",
-    label: "Discord",
-    value: "maltixon69",
-    href:  "https://discord.gg/FqAB4cB4pB",
-    icon:  <DiscordIcon />,
-    hint:  "Napisz DM lub dołącz do serwera",
-  },
-  {
-    id:    "email",
-    type:  "email",
-    label: "E-mail",
-    value: "premkamaltiego@gmail.com",
-    href:  "mailto:premkamaltiego@gmail.com",
-    icon:  <EmailIcon />,
-    hint:  "Odpowiedź w ciągu 24–48h",
-  },
-];
+function PhoneIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+         stroke="rgba(255,255,255,0.22)" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0
+               1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0
+               1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72
+               c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09
+               9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45
+               c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  );
+}
 
-// ── Konfiguracja stanów przycisku kopiowania ──────────────
-const COPY_CONFIG: Record<
-  CopyState,
-  { icon: React.ReactNode; label: string; bg: string; border: string; color: string }
-> = {
-  idle: {
-    icon:   <CopyIcon />,
-    label:  "Kopiuj",
-    bg:     "rgba(108,99,255,0.1)",
-    border: "rgba(108,99,255,0.2)",
-    color:  "rgba(255,255,255,0.38)",
-  },
-  copying: {
-    icon:   <SpinnerIcon />,
-    label:  "...",
-    bg:     "rgba(108,99,255,0.12)",
-    border: "rgba(108,99,255,0.25)",
-    color:  "rgba(255,255,255,0.5)",
-  },
-  success: {
-    icon:   <CheckIcon />,
-    label:  "Skopiowano",
-    bg:     "rgba(34,197,94,0.12)",
-    border: "rgba(34,197,94,0.35)",
-    color:  "#4ade80",
-  },
-  error: {
-    icon:   <ErrorIcon />,
-    label:  "Błąd",
-    bg:     "rgba(239,68,68,0.1)",
-    border: "rgba(239,68,68,0.3)",
-    color:  "#f87171",
-  },
-};
+// ── Spinner ───────────────────────────────────────────────
+function Spinner() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+         style={{ animation: "spinIcon 0.65s linear infinite" }}
+         aria-hidden="true">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83
+               2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+  );
+}
 
 // ── Hook — kopiowanie do schowka ──────────────────────────
 function useCopyToClipboard(value: string, fallbackHref: string) {
-  const [state, setState] = useState<CopyState>("idle");
+  const [state,  setState]  = useState<CopyState>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  async function copy(e: React.MouseEvent) {
+  const copy = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     if (state !== "idle") return;
-
     setState("copying");
 
     try {
       await navigator.clipboard.writeText(value);
       setState("success");
     } catch {
-      // Fallback — selektywne kopiowanie przez input
       try {
-        const input = document.createElement("input");
-        input.value = value;
-        document.body.appendChild(input);
-        input.select();
+        const inp = document.createElement("input");
+        inp.value = value;
+        document.body.appendChild(inp);
+        inp.select();
         document.execCommand("copy");
-        document.body.removeChild(input);
+        document.body.removeChild(inp);
         setState("success");
       } catch {
         setState("error");
-        // Otwórz href jako ostateczny fallback
         window.open(fallbackHref, "_blank");
       }
     }
 
-    timerRef.current = setTimeout(() => setState("idle"), 2200);
-  }
+    timerRef.current = setTimeout(() => setState("idle"), 2400);
+  }, [state, value, fallbackHref]);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
@@ -205,184 +198,391 @@ function useMounted(delay = 0) {
   return mounted;
 }
 
+// ── Copy button ───────────────────────────────────────────
+function CopyButton({
+  value,
+  href,
+}: {
+  value: string;
+  href:  string;
+}) {
+  const { state, copy } = useCopyToClipboard(value, href);
+
+  const cfg = {
+    idle: {
+      icon:   <CopyIcon />,
+      label:  "Kopiuj",
+      bg:     "rgba(255,255,255,0.05)",
+      border: "rgba(255,255,255,0.1)",
+      color:  "rgba(255,255,255,0.35)",
+    },
+    copying: {
+      icon:   <Spinner />,
+      label:  "...",
+      bg:     "rgba(108,99,255,0.1)",
+      border: "rgba(108,99,255,0.25)",
+      color:  "rgba(167,139,250,0.7)",
+    },
+    success: {
+      icon:   <CheckIcon />,
+      label:  "Skopiowano!",
+      bg:     "rgba(34,197,94,0.1)",
+      border: "rgba(34,197,94,0.3)",
+      color:  "#4ade80",
+    },
+    error: {
+      icon:   <CopyIcon />,
+      label:  "Spróbuj ponownie",
+      bg:     "rgba(239,68,68,0.1)",
+      border: "rgba(239,68,68,0.25)",
+      color:  "#f87171",
+    },
+  }[state];
+
+  return (
+    <button
+      onClick={copy}
+      disabled={state === "copying"}
+      aria-label={`Kopiuj: ${value}`}
+      title={cfg.label}
+      style={{
+        flexShrink:    0,
+        display:       "flex",
+        alignItems:    "center",
+        gap:           5,
+        padding:       "5px 10px",
+        borderRadius:  8,
+        fontSize:      "10px",
+        fontWeight:    700,
+        fontFamily:    "'Inter', sans-serif",
+        cursor:        state === "copying" ? "not-allowed" : "pointer",
+        border:        `1px solid ${cfg.border}`,
+        background:    cfg.bg,
+        color:         cfg.color,
+        transition:    "all 0.22s ease",
+        outline:       "none",
+        userSelect:    "none",
+        letterSpacing: "0.02em",
+        whiteSpace:    "nowrap",
+      }}
+    >
+      {cfg.icon}
+      <span>{cfg.label}</span>
+    </button>
+  );
+}
+
 // ── Pojedynczy wiersz kontaktu ────────────────────────────
-function ContactRow({ item, index }: { item: ContactItem; index: number }) {
-  const { state, copy } = useCopyToClipboard(item.value, item.href);
-  const mounted         = useMounted(200 + index * 100);
-  const cfg             = COPY_CONFIG[state];
+function ContactRow({
+  item,
+  index,
+}: {
+  item:  ContactItem;
+  index: number;
+}) {
+  const mounted  = useMounted(180 + index * 90);
+  const [hovered, setHovered] = useState(false);
 
   return (
     <div
       style={{
         opacity:    mounted ? 1 : 0,
-        transform:  mounted ? "translateX(0)" : "translateX(-10px)",
-        transition: `opacity 0.4s ease ${index * 0.08}s,
-                     transform 0.4s ease ${index * 0.08}s`,
+        transform:  mounted ? "translateY(0)" : "translateY(8px)",
+        transition: `opacity 0.4s ease ${index * 0.07}s,
+                     transform 0.4s ease ${index * 0.07}s`,
       }}
     >
-      {/* Separator między wierszami */}
+      {/* Separator */}
       {index > 0 && (
         <div
-          className="mx-1 my-2.5"
-          style={{ height: 1, background: "rgba(108,99,255,0.1)" }}
+          style={{
+            height:     1,
+            margin:     "10px 0",
+            background: "rgba(255,255,255,0.05)",
+          }}
         />
       )}
 
-      <div className="flex items-center gap-3">
-
+      {/* Row */}
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display:       "flex",
+          alignItems:    "center",
+          gap:           12,
+          padding:       "10px 12px",
+          borderRadius:  12,
+          background:    hovered
+            ? `rgba(${item.type === "discord" ? "114,137,218" : "167,139,250"},0.07)`
+            : "transparent",
+          border:        `1px solid ${
+            hovered ? `${item.color}28` : "transparent"
+          }`,
+          transition:    "background 0.2s ease, border-color 0.2s ease",
+          cursor:        "default",
+        }}
+      >
         {/* Ikona platformy */}
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
-            background: "rgba(108,99,255,0.12)",
-            border:     "1px solid rgba(108,99,255,0.18)",
+            width:          38,
+            height:         38,
+            borderRadius:   12,
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            flexShrink:     0,
+            background:     `${item.color}15`,
+            border:         `1px solid ${item.color}25`,
+            boxShadow:      hovered ? `0 0 14px ${item.glow}` : "none",
+            transition:     "box-shadow 0.3s ease",
           }}
         >
-          {item.icon}
+          {item.type === "discord"
+            ? <DiscordIcon size={17} />
+            : <EmailIcon   size={17} />
+          }
         </div>
 
-        {/* Tekst — klikalny link */}
+        {/* Tekst */}
         <a
           href={item.href}
           target={item.type === "email" ? undefined : "_blank"}
           rel="noopener noreferrer"
-          className="flex flex-col min-w-0 flex-1 group"
-          style={{ textDecoration: "none" }}
+          style={{
+            display:        "flex",
+            flexDirection:  "column",
+            gap:            3,
+            flex:           1,
+            minWidth:       0,
+            textDecoration: "none",
+          }}
         >
           {/* Label + hint */}
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div
+            style={{
+              display:    "flex",
+              alignItems: "center",
+              gap:        6,
+            }}
+          >
             <span
               style={{
+                fontFamily:    "'Inter', sans-serif",
                 fontSize:      "9px",
-                fontWeight:    700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color:         "rgba(255,255,255,0.28)",
+                fontWeight:    800,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase" as const,
+                color:         item.color,
+                userSelect:    "none",
               }}
             >
               {item.label}
             </span>
             <span
               style={{
-                fontSize:  "9px",
-                color:     "rgba(255,255,255,0.18)",
+                fontFamily: "'Inter', sans-serif",
+                fontSize:   "9px",
+                color:      "rgba(255,255,255,0.2)",
                 fontWeight: 400,
+                userSelect: "none",
               }}
             >
-              • {item.hint}
+              {item.hint}
             </span>
           </div>
 
-          {/* Wartość */}
-          <span
-            className="truncate transition-colors duration-200
-                       group-hover:text-white"
+          {/* Wartość + external icon */}
+          <div
             style={{
-              fontSize:  "12px",
-              fontWeight: 600,
-              color:     "#c4b5fd",
+              display:    "flex",
+              alignItems: "center",
+              gap:        5,
             }}
           >
-            {item.value}
-          </span>
+            <span
+              style={{
+                fontFamily:    "'Inter', sans-serif",
+                fontSize:      "12.5px",
+                fontWeight:    700,
+                color:         hovered ? "#ffffff" : "rgba(255,255,255,0.75)",
+                transition:    "color 0.2s ease",
+                letterSpacing: "-0.01em",
+                overflow:      "hidden",
+                textOverflow:  "ellipsis",
+                whiteSpace:    "nowrap" as const,
+                userSelect:    "all",
+              }}
+            >
+              {item.value}
+            </span>
+
+            {/* External icon — pojawia się przy hover */}
+            <span
+              style={{
+                color:      item.color,
+                opacity:    hovered ? 0.6 : 0,
+                transform:  hovered ? "translateY(0)" : "translateY(2px)",
+                transition: "opacity 0.2s ease, transform 0.2s ease",
+                display:    "flex",
+                flexShrink: 0,
+              }}
+            >
+              <ExternalIcon size={10} />
+            </span>
+          </div>
         </a>
 
-        {/* Przycisk kopiowania */}
-        <button
-          onClick={copy}
-          disabled={state === "copying"}
-          aria-label={`Kopiuj ${item.label}: ${item.value}`}
-          title={cfg.label}
-          className="flex-shrink-0 flex items-center gap-1.5 rounded-xl
-                     transition-all duration-200 cursor-pointer outline-none
-                     focus-visible:ring-2 focus-visible:ring-violet-500"
-          style={{
-            padding:    "5px 10px",
-            background: cfg.bg,
-            border:     `1px solid ${cfg.border}`,
-            color:      cfg.color,
-          }}
-        >
-          {cfg.icon}
-          <span style={{ fontSize: "10px", fontWeight: 700 }}>
-            {cfg.label}
-          </span>
-        </button>
-
+        {/* Copy button */}
+        <CopyButton value={item.value} href={item.href} />
       </div>
     </div>
   );
 }
 
-// ── Status dot ────────────────────────────────────────────
-function StatusDot() {
+// ── Status badge ──────────────────────────────────────────
+function StatusBadge() {
   return (
-    <span className="ml-auto flex items-center gap-1.5">
+    <div
+      style={{
+        display:    "flex",
+        alignItems: "center",
+        gap:        5,
+        marginLeft: "auto",
+      }}
+    >
       <span
-        className="block w-1.5 h-1.5 rounded-full"
         style={{
-          background: "#22c55e",
-          boxShadow:  "0 0 6px rgba(34,197,94,0.8)",
-          animation:  "pulseDot 2s ease-out infinite",
+          display:      "block",
+          width:        6,
+          height:       6,
+          borderRadius: "50%",
+          background:   "#22c55e",
+          boxShadow:    "0 0 0 0 rgba(34,197,94,0.6)",
+          animation:    "pulseGreen 2.2s ease-out infinite",
+          flexShrink:   0,
         }}
       />
       <span
         style={{
+          fontFamily:    "'Inter', sans-serif",
           fontSize:      "9px",
           fontWeight:    700,
-          letterSpacing: "0.06em",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase" as const,
           color:         "#4ade80",
-          textTransform: "uppercase",
+          userSelect:    "none",
+          whiteSpace:    "nowrap" as const,
         }}
       >
         Otwarty na współpracę
       </span>
-    </span>
+    </div>
+  );
+}
+
+// ── Footer info ───────────────────────────────────────────
+function FooterInfo() {
+  const items = [
+    { icon: <ClockIcon />, text: "Czas odpowiedzi: 24–48h"   },
+    { icon: <PhoneIcon />, text: "Preferowany: Discord"       },
+  ];
+
+  return (
+    <div
+      style={{
+        display:     "flex",
+        alignItems:  "center",
+        flexWrap:    "wrap" as const,
+        gap:         "6px 14px",
+        padding:     "10px 16px",
+        borderTop:   "1px solid rgba(255,255,255,0.05)",
+        background:  "rgba(0,0,0,0.18)",
+      }}
+    >
+      {items.map((item, i) => (
+        <div
+          key={i}
+          style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        5,
+          }}
+        >
+          {item.icon}
+          <span
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize:   "10px",
+              color:      "rgba(255,255,255,0.25)",
+              fontWeight: 500,
+              userSelect: "none",
+            }}
+          >
+            {item.text}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
 // ── Główny komponent ──────────────────────────────────────
 export default function CollabSection() {
-  const mounted = useMounted(100);
+  const mounted = useMounted(80);
 
   return (
     <>
       <style>{`
-        @keyframes spin {
+        @keyframes spinIcon {
           from { transform: rotate(0deg);   }
           to   { transform: rotate(360deg); }
         }
-        @keyframes pulseDot {
-          0%  { box-shadow: 0 0 0 0   rgba(34,197,94,0.6); }
-          70% { box-shadow: 0 0 0 6px rgba(34,197,94,0);   }
-          100%{ box-shadow: 0 0 0 0   rgba(34,197,94,0);   }
+        @keyframes pulseGreen {
+          0%   { box-shadow: 0 0 0 0   rgba(34,197,94,0.7); }
+          70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0);   }
+          100% { box-shadow: 0 0 0 0   rgba(34,197,94,0);   }
         }
       `}</style>
 
       <div
-        className="rounded-2xl overflow-hidden"
         style={{
-          opacity:    mounted ? 1 : 0,
-          transform:  mounted ? "translateY(0)" : "translateY(8px)",
-          transition: "opacity 0.45s ease, transform 0.45s ease",
-          background: "rgba(108,99,255,0.05)",
-          border:     "1px solid rgba(108,99,255,0.14)",
+          borderRadius: 16,
+          overflow:     "hidden",
+          border:       "1px solid rgba(108,99,255,0.14)",
+          background:   "rgba(108,99,255,0.04)",
+          opacity:      mounted ? 1 : 0,
+          transform:    mounted ? "translateY(0)" : "translateY(10px)",
+          transition:   "opacity 0.45s ease, transform 0.45s ease",
         }}
       >
 
         {/* ── Nagłówek ── */}
         <div
-          className="flex items-center gap-2.5 px-4 py-3"
           style={{
+            display:      "flex",
+            alignItems:   "center",
+            gap:          10,
+            padding:      "11px 16px",
             borderBottom: "1px solid rgba(108,99,255,0.1)",
-            background:   "rgba(108,99,255,0.05)",
+            background:   "rgba(108,99,255,0.06)",
           }}
         >
-          {/* Ikona teczki */}
+          {/* Ikona */}
           <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center
-                       text-xs flex-shrink-0"
-            style={{ background: "rgba(108,99,255,0.18)" }}
+            style={{
+              width:          28,
+              height:         28,
+              borderRadius:   9,
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              background:     "rgba(108,99,255,0.18)",
+              border:         "1px solid rgba(108,99,255,0.25)",
+              fontSize:       "13px",
+              flexShrink:     0,
+            }}
           >
             💼
           </div>
@@ -390,79 +590,35 @@ export default function CollabSection() {
           {/* Tytuł */}
           <span
             style={{
+              fontFamily:    "'Inter', sans-serif",
               fontSize:      "10px",
               fontWeight:    800,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
+              letterSpacing: "0.16em",
+              textTransform: "uppercase" as const,
               color:         "#a78bfa",
+              userSelect:    "none",
             }}
           >
             Współpraca biznesowa
           </span>
 
           {/* Status */}
-          <StatusDot />
+          <StatusBadge />
         </div>
 
         {/* ── Wiersze kontaktowe ── */}
-        <div className="px-4 py-3 flex flex-col">
+        <div
+          style={{
+            padding: "6px 4px",
+          }}
+        >
           {CONTACTS.map((item, i) => (
             <ContactRow key={item.id} item={item} index={i} />
           ))}
         </div>
 
         {/* ── Stopka ── */}
-        <div
-          className="px-4 py-2.5 flex items-center gap-2"
-          style={{
-            borderTop:  "1px solid rgba(108,99,255,0.08)",
-            background: "rgba(0,0,0,0.15)",
-          }}
-        >
-          <svg
-            width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke="rgba(255,255,255,0.2)" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span
-            style={{
-              fontSize: "10px",
-              color:    "rgba(255,255,255,0.22)",
-              fontWeight: 500,
-            }}
-          >
-            Czas odpowiedzi: 24–48h
-          </span>
-
-          {/* Rozdzielacz */}
-          <span style={{ color: "rgba(255,255,255,0.1)", fontSize: 10 }}>•</span>
-
-          {/* Preferowany kontakt */}
-          <svg
-            width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke="rgba(255,255,255,0.2)" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round"
-          >
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0
-                     1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0
-                     1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72
-                     c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09
-                     9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45
-                     c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-          <span
-            style={{
-              fontSize: "10px",
-              color:    "rgba(255,255,255,0.22)",
-              fontWeight: 500,
-            }}
-          >
-            Preferowany: Discord
-          </span>
-        </div>
+        <FooterInfo />
 
       </div>
     </>
