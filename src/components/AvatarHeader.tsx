@@ -12,7 +12,6 @@ type Platform = {
 
 // ── Platformy w rotacji ───────────────────────────────────
 const PLATFORMS: Platform[] = [
-  { label: "Twitch Streamer",  color: "#a78bfa", dot: "#9146ff" },
   { label: "YouTube Creator",  color: "#f87171", dot: "#ff0000" },
   { label: "Content Creator",  color: "#67e8f9", dot: "#06b6d4" },
   { label: "TikTok Creator",   color: "#f9a8d4", dot: "#ff0050" },
@@ -355,7 +354,6 @@ export default function AvatarHeader() {
           >
             <Badge variant="purple">🎮 Streamer</Badge>
             <Badge variant="green">🇵🇱 Polska</Badge>
-            <Badge variant="blue">⚡ V2</Badge>
           </div>
         </div>
       </div>
