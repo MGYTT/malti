@@ -19,14 +19,13 @@ type AppPhase = "loading" | "entering" | "ready";
 type Section = {
   id:    string;
   label: string;
-  icon:  string;
 };
 
 // ── Sekcje ────────────────────────────────────────────────
 const SECTIONS: Section[] = [
-  { id: "profile", label: "Profil",     icon: "◉" },
-  { id: "links",   label: "Linki",      icon: "⬡" },
-  { id: "collab",  label: "Współpraca", icon: "✦" },
+  { id: "profile", label: "Profil"      },
+  { id: "links",   label: "Linki"       },
+  { id: "collab",  label: "Współpraca"  },
 ];
 
 // ── Hook — aktywna sekcja ─────────────────────────────────
@@ -35,16 +34,18 @@ function useActiveSection(ids: string[]) {
 
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
+
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
       const obs = new IntersectionObserver(
         ([entry]) => { if (entry.isIntersecting) setActive(id); },
-        { threshold: 0.3, rootMargin: "-10% 0px -50% 0px" },
+        { threshold: 0.25, rootMargin: "-10% 0px -45% 0px" },
       );
       obs.observe(el);
       observers.push(obs);
     });
+
     return () => observers.forEach((o) => o.disconnect());
   }, [ids]);
 
@@ -54,17 +55,26 @@ function useActiveSection(ids: string[]) {
 // ── Hook — scroll progress ────────────────────────────────
 function useScrollProgress(ref: React.RefObject<HTMLDivElement>) {
   const [progress, setProgress] = useState(0);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
     const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      const max = scrollHeight - clientHeight;
-      setProgress(max > 0 ? scrollTop / max : 0);
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const { scrollTop, scrollHeight, clientHeight } = el;
+        const max = scrollHeight - clientHeight;
+        setProgress(max > 0 ? scrollTop / max : 0);
+      });
     };
+
     el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafRef.current);
+    };
   }, [ref]);
 
   return progress;
@@ -89,7 +99,7 @@ function useMountSequence(active: boolean) {
 }
 
 // ── Hook — element in viewport ────────────────────────────
-function useInView(threshold = 0.15) {
+function useInView(threshold = 0.12) {
   const ref     = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
 
@@ -97,7 +107,12 @@ function useInView(threshold = 0.15) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
       { threshold },
     );
     obs.observe(el);
@@ -105,6 +120,21 @@ function useInView(threshold = 0.15) {
   }, [threshold]);
 
   return { ref, inView };
+}
+
+// ── Hook — back to top button ─────────────────────────────
+function useShowBackToTop(ref: React.RefObject<HTMLDivElement>) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onScroll = () => setShow(el.scrollTop > 280);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [ref]);
+
+  return show;
 }
 
 // ── Scroll progress bar ───────────────────────────────────
@@ -120,6 +150,7 @@ function ScrollProgressBar({ progress }: { progress: number }) {
         zIndex:     50,
         height:     2,
         background: "rgba(255,255,255,0.04)",
+        pointerEvents: "none",
       }}
     >
       <div
@@ -128,12 +159,68 @@ function ScrollProgressBar({ progress }: { progress: number }) {
           width:      `${progress * 100}%`,
           background: "linear-gradient(90deg,#6c63ff,#a855f7,#3b82f6)",
           transition: "width 0.1s linear",
-          boxShadow:  progress > 0
-            ? "0 0 12px rgba(108,99,255,0.7)"
+          boxShadow:  progress > 0.01
+            ? "0 0 10px rgba(108,99,255,0.65)"
             : "none",
+          borderRadius: "0 2px 2px 0",
         }}
       />
     </div>
+  );
+}
+
+// ── Back to top button ────────────────────────────────────
+function BackToTop({
+  show,
+  containerRef,
+}: {
+  show:         boolean;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) {
+  const scrollToTop = useCallback(() => {
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [containerRef]);
+
+  return (
+    <button
+      onClick={scrollToTop}
+      aria-label="Wróć na górę"
+      title="Wróć na górę"
+      style={{
+        position:       "fixed",
+        bottom:         24,
+        right:          20,
+        zIndex:         40,
+        width:          36,
+        height:         36,
+        borderRadius:   "50%",
+        background:     "rgba(108,99,255,0.18)",
+        border:         "1px solid rgba(108,99,255,0.35)",
+        display:        "flex",
+        alignItems:     "center",
+        justifyContent: "center",
+        cursor:         "pointer",
+        backdropFilter: "blur(10px)",
+        boxShadow:      "0 4px 16px rgba(108,99,255,0.2)",
+        opacity:        show ? 1 : 0,
+        transform:      show ? "translateY(0) scale(1)" : "translateY(10px) scale(0.85)",
+        pointerEvents:  show ? "all" : "none",
+        transition:     "opacity 0.3s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1)",
+      }}
+    >
+      <svg
+        width="14" height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="rgba(255,255,255,0.75)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+    </button>
   );
 }
 
@@ -153,26 +240,28 @@ function SideNav({
     const el  = document.getElementById(id);
     const cnt = containerRef.current;
     if (!el || !cnt) return;
-    cnt.scrollTo({ top: el.offsetTop - 32, behavior: "smooth" });
+    cnt.scrollTo({ top: el.offsetTop - 28, behavior: "smooth" });
   }, [containerRef]);
 
   return (
     <nav
       aria-label="Nawigacja sekcji"
       style={{
-        position:       "fixed",
-        right:          16,
-        top:            "50%",
-        transform:      "translateY(-50%)",
-        zIndex:         40,
-        display:        "flex",
-        flexDirection:  "column",
-        gap:            14,
+        position:      "fixed",
+        right:         14,
+        top:           "50%",
+        transform:     "translateY(-50%)",
+        zIndex:        40,
+        display:       "flex",
+        flexDirection: "column",
+        gap:           14,
+        // Ukryj na bardzo małych ekranach
       }}
     >
       {sections.map((s) => {
         const isActive  = active === s.id;
         const isHovered = hoveredId === s.id;
+        const highlight = isActive || isHovered;
 
         return (
           <button
@@ -181,7 +270,7 @@ function SideNav({
             onMouseEnter={() => setHoveredId(s.id)}
             onMouseLeave={() => setHoveredId(null)}
             title={s.label}
-            aria-label={s.label}
+            aria-label={`Przejdź do sekcji: ${s.label}`}
             aria-current={isActive ? "true" : undefined}
             style={{
               display:        "flex",
@@ -191,25 +280,26 @@ function SideNav({
               background:     "none",
               border:         "none",
               cursor:         "pointer",
-              padding:        0,
+              padding:        "2px 0",
               outline:        "none",
             }}
           >
-            {/* Label — slide in on hover/active */}
+            {/* Label */}
             <span
               style={{
                 fontFamily:    "'Inter', sans-serif",
-                fontSize:      "9.5px",
-                fontWeight:    600,
-                letterSpacing: "0.08em",
-                color:         (isActive || isHovered)
-                  ? "rgba(255,255,255,0.7)"
-                  : "rgba(255,255,255,0)",
-                transform:     (isActive || isHovered)
+                fontSize:      "9px",
+                fontWeight:    700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase" as const,
+                color:         highlight
+                  ? "rgba(255,255,255,0.72)"
+                  : "transparent",
+                transform:     highlight
                   ? "translateX(0)"
-                  : "translateX(6px)",
-                opacity:       (isActive || isHovered) ? 1 : 0,
-                transition:    "all 0.25s cubic-bezier(.22,1,.36,1)",
+                  : "translateX(8px)",
+                opacity:       highlight ? 1 : 0,
+                transition:    "all 0.28s cubic-bezier(.22,1,.36,1)",
                 userSelect:    "none",
                 whiteSpace:    "nowrap",
               }}
@@ -220,22 +310,22 @@ function SideNav({
             {/* Dot */}
             <div
               style={{
-                width:        isActive ? 10 : isHovered ? 8 : 6,
-                height:       isActive ? 10 : isHovered ? 8 : 6,
+                width:        isActive ? 10 : isHovered ? 7 : 5,
+                height:       isActive ? 10 : isHovered ? 7 : 5,
                 borderRadius: "50%",
                 flexShrink:   0,
                 background:   isActive
                   ? "linear-gradient(135deg,#6c63ff,#a855f7)"
                   : isHovered
-                  ? "rgba(108,99,255,0.6)"
-                  : "rgba(255,255,255,0.22)",
+                  ? "rgba(108,99,255,0.65)"
+                  : "rgba(255,255,255,0.2)",
                 boxShadow:    isActive
-                  ? "0 0 12px rgba(108,99,255,0.9)"
+                  ? "0 0 14px rgba(108,99,255,0.9)"
                   : isHovered
                   ? "0 0 8px rgba(108,99,255,0.5)"
                   : "none",
-                border:       (!isActive && !isHovered)
-                  ? "1px solid rgba(255,255,255,0.14)"
+                border:       !highlight
+                  ? "1px solid rgba(255,255,255,0.13)"
                   : "none",
                 transition:   "all 0.3s cubic-bezier(.34,1.56,.64,1)",
               }}
@@ -252,28 +342,28 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div
       style={{
-        display:        "flex",
-        alignItems:     "center",
-        gap:            10,
-        padding:        "2px 0",
+        display:     "flex",
+        alignItems:  "center",
+        gap:         10,
+        padding:     "2px 0",
+        userSelect:  "none",
       }}
     >
       <div
         style={{
           flex:       1,
           height:     1,
-          background: "linear-gradient(90deg,rgba(108,99,255,0.25),transparent)",
+          background: "linear-gradient(90deg,rgba(108,99,255,0.22),transparent)",
         }}
       />
       <span
         style={{
           fontFamily:    "'Inter', sans-serif",
-          fontSize:      "8.5px",
-          fontWeight:    700,
-          letterSpacing: "0.18em",
+          fontSize:      "8px",
+          fontWeight:    800,
+          letterSpacing: "0.2em",
           textTransform: "uppercase" as const,
-          color:         "rgba(255,255,255,0.2)",
-          userSelect:    "none",
+          color:         "rgba(255,255,255,0.18)",
         }}
       >
         {label}
@@ -282,24 +372,39 @@ function SectionDivider({ label }: { label: string }) {
         style={{
           flex:       1,
           height:     1,
-          background: "linear-gradient(90deg,transparent,rgba(108,99,255,0.25))",
+          background: "linear-gradient(90deg,transparent,rgba(108,99,255,0.22))",
         }}
       />
     </div>
   );
 }
 
-// ── Animated section — wchodzi gdy w viewport ─────────────
+// ── Thin horizontal divider ───────────────────────────────
+function HDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        height:     1,
+        background: "rgba(255,255,255,0.05)",
+        margin:     "18px 0 16px",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// ── FadeSection — wchodzi gdy w viewport ──────────────────
 function FadeSection({
-  delay   = 0,
-  translateY = 14,
+  delay      = 0,
+  translateY = 12,
   children,
 }: {
   delay?:      number;
   translateY?: number;
   children:    React.ReactNode;
 }) {
-  const { ref, inView } = useInView(0.1);
+  const { ref, inView } = useInView(0.08);
 
   return (
     <div
@@ -309,8 +414,10 @@ function FadeSection({
         transform:  inView
           ? "translateY(0px)"
           : `translateY(${translateY}px)`,
-        transition: `opacity 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms,
-                     transform 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+        transition: `
+          opacity   0.55s cubic-bezier(.22,1,.36,1) ${delay}ms,
+          transform 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms
+        `,
       }}
     >
       {children}
@@ -318,7 +425,7 @@ function FadeSection({
   );
 }
 
-// ── Enter animation wrapper — dla pierwszego renderu ──────
+// ── EnterSection — wchodzi przy mount ─────────────────────
 function EnterSection({
   step,
   minStep,
@@ -336,9 +443,14 @@ function EnterSection({
     <div
       style={{
         opacity:    show ? 1 : 0,
-        transform:  show ? "translateY(0px) scale(1)" : "translateY(14px) scale(0.99)",
-        transition: `opacity 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms,
-                     transform 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+        transform:  show
+          ? "translateY(0px) scale(1)"
+          : "translateY(16px) scale(0.99)",
+        transition: `
+          opacity   0.6s cubic-bezier(.22,1,.36,1) ${delay}ms,
+          transform 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms
+        `,
+        willChange: show ? "auto" : "opacity, transform",
       }}
     >
       {children}
@@ -346,7 +458,7 @@ function EnterSection({
   );
 }
 
-// ── Karta główna ──────────────────────────────────────────
+// ── MainCard ──────────────────────────────────────────────
 function MainCard({
   step,
   children,
@@ -363,11 +475,10 @@ function MainCard({
         opacity:    show ? 1 : 0,
         transform:  show
           ? "translateY(0px) scale(1)"
-          : "translateY(32px) scale(0.97)",
+          : "translateY(36px) scale(0.965)",
         transition:
-          "opacity 0.7s cubic-bezier(.22,1,.36,1), " +
-          "transform 0.7s cubic-bezier(.22,1,.36,1)",
-        // GPU acceleration
+          "opacity 0.75s cubic-bezier(.22,1,.36,1), " +
+          "transform 0.75s cubic-bezier(.22,1,.36,1)",
         willChange: show ? "auto" : "opacity, transform",
       }}
     >
@@ -379,10 +490,10 @@ function MainCard({
 // ── Footer ────────────────────────────────────────────────
 function Footer({ visible }: { visible: boolean }) {
   return (
-    <div
+    <footer
       style={{
         textAlign:  "center",
-        padding:    "12px 0 32px",
+        padding:    "10px 0 28px",
         opacity:    visible ? 1 : 0,
         transform:  visible ? "translateY(0)" : "translateY(8px)",
         transition: "opacity 0.5s ease 0.5s, transform 0.5s ease 0.5s",
@@ -392,24 +503,24 @@ function Footer({ visible }: { visible: boolean }) {
         style={{
           fontFamily:    "'Inter', sans-serif",
           fontSize:      "10px",
-          color:         "rgba(255,255,255,0.13)",
+          color:         "rgba(255,255,255,0.12)",
           fontWeight:    500,
           letterSpacing: "0.04em",
           userSelect:    "none",
-          lineHeight:    1.6,
+          lineHeight:    1.7,
         }}
       >
         © {new Date().getFullYear()} MALTIXON
-        <span style={{ margin: "0 7px", opacity: 0.4 }}>•</span>
+        <span style={{ margin: "0 6px", opacity: 0.35 }}>•</span>
         Wszelkie prawa zastrzeżone
-        <span style={{ margin: "0 7px", opacity: 0.4 }}>•</span>
-        <span style={{ color: "rgba(108,99,255,0.45)" }}>v2.0</span>
+        <span style={{ margin: "0 6px", opacity: 0.35 }}>•</span>
+        <span style={{ color: "rgba(108,99,255,0.4)" }}>v2.0</span>
       </p>
-    </div>
+    </footer>
   );
 }
 
-// ── Overlay — page transition po LoadingScreen ────────────
+// ── PageTransitionOverlay ─────────────────────────────────
 function PageTransitionOverlay({ phase }: { phase: AppPhase }) {
   const visible = phase === "entering";
 
@@ -431,128 +542,125 @@ function PageTransitionOverlay({ phase }: { phase: AppPhase }) {
 
 // ── Główna strona ─────────────────────────────────────────
 export default function Home() {
-  const [phase, setPhase] = useState<AppPhase>("loading");
-  const containerRef      = useRef<HTMLDivElement>(null);
-  const progress          = useScrollProgress(containerRef);
-  const step              = useMountSequence(phase === "ready");
-  const sectionIds        = useMemo(() => SECTIONS.map((s) => s.id), []);
-  const active            = useActiveSection(sectionIds);
+  const [phase, setPhase]   = useState<AppPhase>("loading");
+  const containerRef        = useRef<HTMLDivElement>(null);
+  const progress            = useScrollProgress(containerRef);
+  const step                = useMountSequence(phase === "ready");
+  const sectionIds          = useMemo(() => SECTIONS.map((s) => s.id), []);
+  const active              = useActiveSection(sectionIds);
+  const showBackToTop       = useShowBackToTop(containerRef);
 
-  // Loading → entering → ready
   const handleLoadComplete = useCallback(() => {
     setPhase("entering");
-    // Krótki beat — overlay znika płynnie
     setTimeout(() => setPhase("ready"), 80);
   }, []);
 
+  // ── Loading ───────────────────────────────────────────
   if (phase === "loading") {
     return <LoadingScreen onComplete={handleLoadComplete} />;
   }
 
+  // ── App ───────────────────────────────────────────────
   return (
     <>
-      {/* Overlay przejścia */}
       <PageTransitionOverlay phase={phase} />
-
-      {/* Pasek scrollowania */}
-      <ScrollProgressBar progress={progress} />
-
-      {/* Nawigacja boczna */}
+      <ScrollProgressBar     progress={progress} />
       <SideNav
         sections={SECTIONS}
         active={active}
         containerRef={containerRef}
       />
-
-      {/* Tło */}
+      <BackToTop
+        show={showBackToTop}
+        containerRef={containerRef}
+      />
       <Background />
 
-      {/* Kontener scrollowania */}
+      {/* ── Kontener scrollowania ── */}
       <div
         ref={containerRef}
-        className="relative z-10 w-full h-screen overflow-y-auto
-                   scroll-container"
-        style={{ scrollBehavior: "smooth" }}
+        className="scroll-container"
+        style={{
+          position:  "relative",
+          zIndex:    10,
+          width:     "100%",
+          height:    "100dvh",   // dvh — poprawka dla mobile browsers
+          overflowY: "auto",
+        }}
       >
         <div
           style={{
             display:        "flex",
             justifyContent: "center",
-            padding:        "clamp(28px, 5vw, 48px) 16px",
+            padding:        "clamp(24px, 5vw, 44px) clamp(12px, 4vw, 20px)",
             minHeight:      "100%",
           }}
         >
           <div
             style={{
-              width:    "100%",
-              maxWidth: 420,
-              display:  "flex",
+              width:         "100%",
+              maxWidth:      420,
+              display:       "flex",
               flexDirection: "column",
-              gap:      16,
+              gap:           14,
             }}
           >
 
-            {/* ════ KARTA GŁÓWNA ════ */}
+            {/* ════════ KARTA GŁÓWNA ════════ */}
             <MainCard step={step}>
 
-              {/* ══ PROFIL ══════════════════════════ */}
+              {/* ══ SEKCJA: PROFIL ══ */}
               <section
                 id="profile"
                 aria-label="Profil MALTIXON"
-                style={{ padding: "clamp(20px, 5vw, 28px) clamp(16px, 5vw, 24px) 20px" }}
+                style={{
+                  padding: "clamp(20px,5vw,28px) clamp(14px,5vw,22px) 20px",
+                }}
               >
-                {/* Avatar — wchodzi jako pierwszy */}
                 <EnterSection step={step} minStep={1} delay={40}>
                   <AvatarHeader />
                 </EnterSection>
 
-                {/* Stats */}
-                <EnterSection step={step} minStep={2} delay={80}>
+                <EnterSection step={step} minStep={2} delay={90}>
                   <StatsRow />
                 </EnterSection>
 
-                {/* Social icons */}
-                <EnterSection step={step} minStep={2} delay={140}>
-                  <div
-                    style={{
-                      height:     1,
-                      background: "rgba(255,255,255,0.05)",
-                      margin:     "18px 0 16px",
-                    }}
-                  />
-                  <p
-                    className="section-label"
-                    style={{ marginBottom: 10 }}
-                  >
+                <EnterSection step={step} minStep={2} delay={150}>
+                  <HDivider />
+                  <p className="section-label">
                     Media społecznościowe
                   </p>
                   <SocialIcons />
                 </EnterSection>
               </section>
 
-              {/* ══ LINKI ════════════════════════════ */}
+              {/* ══ SEKCJA: LINKI ══ */}
               <section
                 id="links"
                 aria-label="Linki MALTIXON"
-                style={{ padding: "0 clamp(16px, 5vw, 24px) 20px" }}
+                style={{
+                  padding: "0 clamp(14px,5vw,22px) 20px",
+                }}
               >
                 <FadeSection delay={0}>
                   <SectionDivider label="Linki" />
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 11 }}>
                     <LinksList />
                   </div>
                 </FadeSection>
               </section>
 
-              {/* ══ WSPÓŁPRACA ═══════════════════════ */}
+              {/* ══ SEKCJA: WSPÓŁPRACA ══ */}
               <section
                 id="collab"
                 aria-label="Współpraca z MALTIXON"
-                style={{ padding: "0 clamp(16px, 5vw, 24px) clamp(20px, 5vw, 28px)" }}
+                style={{
+                  padding: "0 clamp(14px,5vw,22px) clamp(20px,5vw,28px)",
+                }}
               >
-                <FadeSection delay={60}>
+                <FadeSection delay={55}>
                   <SectionDivider label="Współpraca" />
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 11 }}>
                     <CollabSection />
                   </div>
                 </FadeSection>
