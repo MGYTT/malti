@@ -1,27 +1,667 @@
+/* ══════════════════════════════════════════════════════════
+   MALTIXON — globals.css
+   Design System: Dark · Glassmorphism · Purple accent
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Google Fonts ────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+/* ── Tailwind ────────────────────────────────────────────── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════════
+   1. CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   ══════════════════════════════════════════════════════════ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Kolory bazowe */
+  --color-bg:            #0a0a0f;
+  --color-bg-secondary:  #0d0d1a;
+  --color-bg-tertiary:   #0a0f1a;
+
+  /* Akcenty */
+  --color-purple:        #6c63ff;
+  --color-violet:        #a855f7;
+  --color-blue:          #3b82f6;
+  --color-violet-light:  #a78bfa;
+  --color-violet-pale:   #c4b5fd;
+
+  /* Tekst */
+  --color-text-primary:   #e2e8f0;
+  --color-text-secondary: rgba(255, 255, 255, 0.45);
+  --color-text-muted:     rgba(255, 255, 255, 0.25);
+  --color-text-faint:     rgba(255, 255, 255, 0.12);
+
+  /* Granice */
+  --color-border:         rgba(255, 255, 255, 0.08);
+  --color-border-hover:   rgba(108, 99, 255, 0.4);
+  --color-border-purple:  rgba(108, 99, 255, 0.18);
+
+  /* Glass */
+  --glass-bg:             rgba(255, 255, 255, 0.04);
+  --glass-blur:           24px;
+
+  /* Cienie */
+  --shadow-purple:        0 8px 30px rgba(108, 99, 255, 0.18);
+  --shadow-purple-sm:     0 4px 16px rgba(108, 99, 255, 0.12);
+  --shadow-glow:          0 0 20px rgba(108, 99, 255, 0.35);
+
+  /* Promień */
+  --radius-sm:   10px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* Przejścia */
+  --transition-fast:   0.15s ease;
+  --transition-base:   0.22s ease;
+  --transition-slow:   0.4s ease;
+  --transition-spring: 0.35s cubic-bezier(.34, 1.56, .64, 1);
+  --transition-smooth: 0.45s cubic-bezier(.22, 1, .36, 1);
+
+  /* Typografia */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont,
+               "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Spacing */
+  --card-padding-x: 24px;
+  --card-padding-y: 28px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ══════════════════════════════════════════════════════════
+   2. RESET & BASE
+   ══════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing:  border-box;
+  margin:      0;
+  padding:     0;
+}
+
+html {
+  height:          100%;
+  font-size:       16px;
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  height:                   100%;
+  font-family:              var(--font-sans);
+  background:               var(--color-bg);
+  color:                    var(--color-text-primary);
+  line-height:              1.5;
+  -webkit-font-smoothing:   antialiased;
+  -moz-osx-font-smoothing:  grayscale;
+  text-rendering:           optimizeLegibility;
+  overflow-x:               hidden;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* ── Scrollbar ───────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 99, 255, 0.3) transparent;
+}
+
+*::-webkit-scrollbar       { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background:    rgba(108, 99, 255, 0.3);
+  border-radius: var(--radius-full);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 99, 255, 0.55);
+}
+
+/* ── Selekcja tekstu ─────────────────────────────────────── */
+::selection {
+  background: rgba(108, 99, 255, 0.35);
+  color:      #fff;
+}
+
+/* ── Focus visible ───────────────────────────────────────── */
+:focus-visible {
+  outline:        2px solid var(--color-purple);
+  outline-offset: 3px;
+  border-radius:  var(--radius-sm);
+}
+
+/* ── Linki bazowe ────────────────────────────────────────── */
+a {
+  color:           inherit;
+  text-decoration: none;
+}
+
+/* ── Przyciski bazowe ────────────────────────────────────── */
+button {
+  font-family:  inherit;
+  cursor:       pointer;
+  border:       none;
+  background:   none;
+  color:        inherit;
+  padding:      0;
+}
+
+/* ── Obrazy ──────────────────────────────────────────────── */
+img, svg {
+  display:    block;
+  max-width:  100%;
+  height:     auto;
+}
+
+/* ══════════════════════════════════════════════════════════
+   3. GLASSMORPHISM CARD
+   ══════════════════════════════════════════════════════════ */
+.glass {
+  background:              var(--glass-bg);
+  backdrop-filter:         blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border:                  1px solid var(--color-border);
+  border-radius:           var(--radius-xl);
+  position:                relative;
+  overflow:                hidden;
+}
+
+/* Subtelna górna linia highlight */
+.glass::before {
+  content:  "";
+  position: absolute;
+  top:      0;
+  left:     10%;
+  right:    10%;
+  height:   1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   4. DIVIDERS
+   ══════════════════════════════════════════════════════════ */
+.divider {
+  height:     1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08) 30%,
+    rgba(255, 255, 255, 0.08) 70%,
+    transparent
+  );
+  flex-shrink: 0;
+}
+
+.divider-purple {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(108, 99, 255, 0.2) 30%,
+    rgba(108, 99, 255, 0.2) 70%,
+    transparent
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   5. TYPOGRAPHY UTILITIES
+   ══════════════════════════════════════════════════════════ */
+
+/* Section label */
+.section-label {
+  font-size:      10px;
+  font-weight:    700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color:          var(--color-text-muted);
+  margin-bottom:  10px;
+  padding-left:   4px;
+  user-select:    none;
+}
+
+/* Stat number */
+.stat-num {
+  font-size:      18px;
+  font-weight:    800;
+  color:          var(--color-text-primary);
+  letter-spacing: -0.5px;
+  line-height:    1;
+}
+
+/* Stat label */
+.stat-lbl {
+  font-size:      9px;
+  font-weight:    500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color:          var(--color-text-muted);
+  margin-top:     3px;
+  line-height:    1;
+}
+
+/* Link text */
+.link-text-title {
+  font-size:   13px;
+  font-weight: 600;
+  color:       var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.link-text-sub {
+  font-size:   11px;
+  font-weight: 400;
+  color:       var(--color-text-secondary);
+  line-height: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   6. BADGE
+   ══════════════════════════════════════════════════════════ */
+.badge {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            5px;
+  padding:        3px 10px;
+  border-radius:  var(--radius-full);
+  font-size:      10px;
+  font-weight:    700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space:    nowrap;
+  user-select:    none;
+  /* default: purple */
+  background: rgba(108, 99, 255, 0.15);
+  border:     1px solid rgba(108, 99, 255, 0.3);
+  color:      var(--color-violet-light);
+}
+
+.badge-green {
+  background: rgba(52,  211, 153, 0.1);
+  border:     1px solid rgba(52, 211, 153, 0.3);
+  color:      #4ade80;
+}
+
+.badge-blue {
+  background: rgba(59,  130, 246, 0.12);
+  border:     1px solid rgba(59, 130, 246, 0.3);
+  color:      #93c5fd;
+}
+
+.badge-red {
+  background: rgba(239, 68,  68,  0.1);
+  border:     1px solid rgba(239, 68, 68, 0.28);
+  color:      #fca5a5;
+}
+
+/* ══════════════════════════════════════════════════════════
+   7. SOCIAL ICON BUTTON
+   ══════════════════════════════════════════════════════════ */
+.social-icon {
+  position:        relative;
+  width:           42px;
+  height:          42px;
+  border-radius:   var(--radius-sm);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background:      rgba(255, 255, 255, 0.05);
+  border:          1px solid var(--color-border);
+  color:           rgba(255, 255, 255, 0.42);
+  text-decoration: none;
+  transition:
+    transform     var(--transition-spring),
+    background    var(--transition-base),
+    border-color  var(--transition-base),
+    box-shadow    var(--transition-base),
+    color         var(--transition-base);
+  cursor:          pointer;
+  user-select:     none;
+  flex-shrink:     0;
+}
+
+.social-icon:hover {
+  transform:    translateY(-4px) scale(1.08);
+  background:   rgba(108, 99, 255, 0.15);
+  border-color: rgba(108, 99, 255, 0.4);
+  color:        var(--color-violet-light);
+  box-shadow:   var(--shadow-purple-sm);
+}
+
+.social-icon:active {
+  transform: translateY(0px) scale(0.94);
+}
+
+/* ══════════════════════════════════════════════════════════
+   8. LINK BUTTON
+   ══════════════════════════════════════════════════════════ */
+.link-btn {
+  display:         flex;
+  align-items:     center;
+  gap:             13px;
+  padding:         12px 16px;
+  border-radius:   var(--radius-md);
+  text-decoration: none;
+  color:           var(--color-text-primary);
+  font-size:       13px;
+  font-weight:     500;
+  background:      rgba(255, 255, 255, 0.04);
+  border:          1px solid var(--color-border);
+  transition:
+    transform     var(--transition-base),
+    border-color  var(--transition-base),
+    box-shadow    var(--transition-base),
+    background    var(--transition-base);
+  position:        relative;
+  overflow:        hidden;
+  cursor:          pointer;
+  user-select:     none;
+  width:           100%;
+}
+
+/* Pseudo-element gradient overlay */
+.link-btn::before {
+  content:    "";
+  position:   absolute;
+  inset:      0;
+  background: linear-gradient(
+    90deg,
+    rgba(108, 99, 255, 0.08),
+    rgba(168, 85, 247, 0.05)
+  );
+  opacity:    0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.link-btn:hover::before {
+  opacity: 1;
+}
+
+.link-btn:hover {
+  border-color: var(--color-border-hover);
+  box-shadow:   var(--shadow-purple);
+  transform:    translateY(-2px);
+}
+
+.link-btn:active {
+  transform:  scale(0.982) translateY(1px);
+  transition: transform 0.08s ease;
+}
+
+/* Ikona linku */
+.link-icon {
+  width:           38px;
+  height:          38px;
+  border-radius:   var(--radius-sm);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       17px;
+  flex-shrink:     0;
+  transition:      transform var(--transition-spring);
+}
+
+.link-btn:hover .link-icon {
+  transform: scale(1.08);
+}
+
+/* Strzałka */
+.arrow {
+  margin-left: auto;
+  color:       rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+  transition:
+    transform var(--transition-base),
+    color     var(--transition-base);
+}
+
+.link-btn:hover .arrow {
+  transform: translateX(4px);
+  color:     rgba(255, 255, 255, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════════
+   9. KEYFRAME ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+/* Orby świetlne */
+@keyframes orbFloat10s {
+  0%,  100% { transform: translateY(0px)    scale(1);    }
+  33%        { transform: translateY(-28px)  scale(1.04); }
+  66%        { transform: translateY(-14px)  scale(1.02); }
+}
+
+@keyframes orbFloat13s {
+  0%,  100% { transform: translateY(0px)    scale(1);    }
+  33%        { transform: translateY(-18px)  scale(1.03); }
+  66%        { transform: translateY(-8px)   scale(1.01); }
+}
+
+@keyframes orbFloat16s {
+  0%,  100% { transform: translateY(0px)    scale(1);    }
+  50%        { transform: translateY(-24px)  scale(1.05); }
+}
+
+@keyframes orbFloat20s {
+  0%,  100% { transform: translateY(0px)    scale(1);    }
+  50%        { transform: translateY(-12px)  scale(1.03); }
+}
+
+/* Ring avatara */
+@keyframes spinRing {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* Pulsowanie kropki status */
+@keyframes pulseDot {
+  0%   { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0.6); }
+  70%  { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0);   }
+}
+
+/* Pulsowanie fioletowe */
+@keyframes pulsePurple {
+  0%   { box-shadow: 0 0 0 0   rgba(108, 99, 255, 0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(108, 99, 255, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(108, 99, 255, 0);   }
+}
+
+/* Fade + slide up */
+@keyframes fadeSlideUp {
+  from {
+    opacity:   0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity:   1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade + slide in od lewej */
+@keyframes fadeSlideLeft {
+  from {
+    opacity:   0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity:   1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from {
+    opacity:   0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity:   1;
+    transform: scale(1);
+  }
+}
+
+/* Shimmer (skeleton loading) */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+/* Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* Blink */
+@keyframes blink {
+  0%, 100% { opacity: 1;   }
+  50%       { opacity: 0.3; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   10. ANIMATION UTILITY CLASSES
+   ══════════════════════════════════════════════════════════ */
+.animate-fade-up {
+  animation: fadeSlideUp var(--transition-smooth) both;
+}
+
+.animate-fade-left {
+  animation: fadeSlideLeft var(--transition-slow) both;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-smooth) both;
+}
+
+.animate-spin-slow {
+  animation: spin 6s linear infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulseDot 2.2s ease-out infinite;
+}
+
+.animate-pulse-purple {
+  animation: pulsePurple 2.2s ease-out infinite;
+}
+
+.animate-blink {
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+/* Stagger helpers */
+.delay-75  { animation-delay:  75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-225 { animation-delay: 225ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-375 { animation-delay: 375ms; }
+.delay-450 { animation-delay: 450ms; }
+
+/* ══════════════════════════════════════════════════════════
+   11. SHIMMER / SKELETON
+   ══════════════════════════════════════════════════════════ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 400px 100%;
+  animation:       shimmer 1.6s ease-in-out infinite;
+  border-radius:   var(--radius-sm);
+}
+
+/* ══════════════════════════════════════════════════════════
+   12. SCROLLBAR (main container)
+   ══════════════════════════════════════════════════════════ */
+.scroll-container {
+  overflow-y:    auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 99, 255, 0.3) transparent;
+}
+
+.scroll-container::-webkit-scrollbar       { width: 4px; }
+.scroll-container::-webkit-scrollbar-track { background: transparent; }
+.scroll-container::-webkit-scrollbar-thumb {
+  background:    rgba(108, 99, 255, 0.3);
+  border-radius: var(--radius-full);
+}
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 99, 255, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════════
+   13. MOBILE OPTIMIZATIONS
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  :root {
+    --card-padding-x: 18px;
+    --card-padding-y: 22px;
+    --glass-blur:     16px;
+  }
+
+  /* Zmniejsz font sekcji */
+  .section-label {
+    font-size: 9px;
+  }
+
+  /* Zmniejsz ikony social */
+  .social-icon {
+    width:  38px;
+    height: 38px;
+  }
+
+  /* Wyłącz hover transform na dotyku */
+  @media (hover: none) {
+    .link-btn:hover,
+    .social-icon:hover {
+      transform: none;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   14. REDUCED MOTION
+   ══════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+    scroll-behavior:      auto   !important;
+  }
+
+  .animate-spin-slow,
+  .animate-pulse-dot,
+  .animate-pulse-purple,
+  .animate-blink {
+    animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   15. PRINT
+   ══════════════════════════════════════════════════════════ */
+@media print {
+  body {
+    background: #fff;
+    color:      #000;
+  }
+
+  .glass {
+    background: #fff;
+    border:     1px solid #ccc;
+    backdrop-filter: none;
   }
 }
