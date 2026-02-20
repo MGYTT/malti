@@ -1,0 +1,64 @@
+{
+  "stats": {
+    "subscribers": { "value": 592,  "display": "592K",  "suffix": "K"  },
+    "views":       { "value": 65,   "display": "65M+",  "suffix": "M+" },
+    "followers":   { "value": 40,   "display": "40K",   "suffix": "K"  }
+  },
+  "status": {
+    "available":   true,
+    "text":        "Otwarty na współpracę",
+    "streamInfo":  "Stream dziś o 20:00!"
+  },
+  "profile": {
+    "name":        "MALTIXON",
+    "tagline":     "Polski Streamer & Twórca",
+    "preferred":   "Discord"
+  },
+  "links": [
+    {
+      "id":      "youtube",
+      "label":   "YouTube",
+      "sub":     "592K Subskrybentów",
+      "url":     "https://youtube.com/@maltixon",
+      "emoji":   "▶",
+      "color":   "#ff4444",
+      "visible": true
+    },
+    {
+      "id":      "twitch",
+      "label":   "Twitch",
+      "sub":     "Oglądaj streamy na żywo",
+      "url":     "https://twitch.tv/maltixon",
+      "emoji":   "🎮",
+      "color":   "#9146ff",
+      "visible": true
+    },
+    {
+      "id":      "tiktok",
+      "label":   "TikTok",
+      "sub":     "Krótkie klipy i highlights",
+      "url":     "https://tiktok.com/@maltixon",
+      "emoji":   "🎵",
+      "color":   "#ff0050",
+      "visible": true
+    },
+    {
+      "id":      "instagram",
+      "label":   "Instagram",
+      "sub":     "40K Obserwujących",
+      "url":     "https://instagram.com/maltixon",
+      "emoji":   "📸",
+      "color":   "#e1306c",
+      "visible": true
+    },
+    {
+      "id":      "discord",
+      "label":   "Discord Server",
+      "sub":     "Dołącz do społeczności",
+      "url":     "https://discord.gg/FqAB4cB4pB",
+      "emoji":   "💬",
+      "color":   "#7289da",
+      "visible": true
+    }
+  ]
+}
