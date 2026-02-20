@@ -6,14 +6,13 @@ import { Analytics } from "@vercel/analytics/next"
 export const metadata: Metadata = {
   // ── Podstawowe ──
   title:       "MALTIXON",
-  description: "Polski streamer i twórca treści — YouTube, Twitch, TikTok, Discord",
+  description: "Polski streamer i twórca treści — YouTube, TikTok, Discord",
   keywords:    [
     "MALTIXON",
     "maltixon",
     "streamer",
     "polski streamer",
     "YouTube",
-    "Twitch",
     "TikTok",
     "Discord",
     "gaming",
@@ -33,15 +32,15 @@ export const metadata: Metadata = {
     type:        "website",
     url:         "https://maltixon.pl",
     title:       "MALTIXON",
-    description: "Polski streamer i twórca treści — YouTube, Twitch, TikTok, Discord",
+    description: "Wszystkie potrzebne linki w jednym!",
     siteName:    "MALTIXON",
     locale:      "pl_PL",
     images: [
       {
-        url:    "https://maltixon.pl/og-image.png",
+        url:    "https://i.imgur.com/CcNBgGg.png",
         width:  1200,
         height: 630,
-        alt:    "MALTIXON — Polski Streamer",
+        alt:    "MALTIXON",
       },
     ],
   },
@@ -50,8 +49,8 @@ export const metadata: Metadata = {
   twitter: {
     card:        "summary_large_image",
     title:       "MALTIXON",
-    description: "Polski streamer i twórca treści — YouTube, Twitch, TikTok, Discord",
-    images:      ["https://maltixon.pl/og-image.png"],
+    description: "Polski streamer i twórca treści — YouTube, TikTok, Discord",
+    images:      ["https://i.imgur.com/CcNBgGg.png"],
   },
 
   // ── Robots ──
