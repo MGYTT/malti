@@ -26,26 +26,52 @@ const SECTIONS: Section[] = [
   { id: "collab",  label: "Współpraca" },
 ];
 
-// ── Hooki ─────────────────────────────────────────────────
-function useActiveSection(ids: string[]) {
+// ── Hook — aktywna sekcja (naprawiony) ────────────────────
+function useActiveSection(
+  ids:          string[],
+  containerRef: React.RefObject<HTMLDivElement>,
+) {
   const [active, setActive] = useState(ids[0]);
+
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActive(id); },
-        { threshold: 0.25, rootMargin: "-10% 0px -45% 0px" },
-      );
-      obs.observe(el);
-      observers.push(obs);
-    });
-    return () => observers.forEach((o) => o.disconnect());
-  }, [ids]);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onScroll = () => {
+      const containerRect = container.getBoundingClientRect();
+
+      let bestId   = ids[0];
+      let bestDist = Infinity;
+
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const rect        = el.getBoundingClientRect();
+        const relativeTop = rect.top - containerRect.top;
+
+        // Bierzemy sekcję której górna krawędź jest najbliżej 80px od góry kontenera
+        const dist = Math.abs(relativeTop - 80);
+        if (relativeTop <= 180 && dist < bestDist) {
+          bestDist = dist;
+          bestId   = id;
+        }
+      });
+
+      setActive(bestId);
+    };
+
+    container.addEventListener("scroll", onScroll, { passive: true });
+    // Ustaw aktywną sekcję od razu przy montażu
+    onScroll();
+
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [ids, containerRef]);
+
   return active;
 }
 
+// ── Hook — scroll progress ────────────────────────────────
 function useScrollProgress(ref: React.RefObject<HTMLDivElement>) {
   const [progress, setProgress] = useState(0);
   const rafRef = useRef<number>(0);
@@ -69,6 +95,7 @@ function useScrollProgress(ref: React.RefObject<HTMLDivElement>) {
   return progress;
 }
 
+// ── Hook — mount sequence ─────────────────────────────────
 function useMountSequence(active: boolean) {
   const [step, setStep] = useState(0);
   useEffect(() => {
@@ -84,6 +111,7 @@ function useMountSequence(active: boolean) {
   return step;
 }
 
+// ── Hook — in view ────────────────────────────────────────
 function useInView(threshold = 0.12) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
@@ -102,6 +130,7 @@ function useInView(threshold = 0.12) {
   return { ref, inView };
 }
 
+// ── Hook — back to top ────────────────────────────────────
 function useShowBackToTop(ref: React.RefObject<HTMLDivElement>) {
   const [show, setShow] = useState(false);
   useEffect(() => {
@@ -114,7 +143,7 @@ function useShowBackToTop(ref: React.RefObject<HTMLDivElement>) {
   return show;
 }
 
-// ── UI komponenty ─────────────────────────────────────────
+// ── ScrollProgressBar ─────────────────────────────────────
 function ScrollProgressBar({ progress }: { progress: number }) {
   return (
     <div aria-hidden="true" style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, height: 2, background: "rgba(255,255,255,0.04)", pointerEvents: "none" }}>
@@ -123,34 +152,67 @@ function ScrollProgressBar({ progress }: { progress: number }) {
   );
 }
 
+// ── BackToTop ─────────────────────────────────────────────
 function BackToTop({ show, containerRef }: { show: boolean; containerRef: React.RefObject<HTMLDivElement> }) {
   const scrollToTop = useCallback(() => {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [containerRef]);
   return (
-    <button onClick={scrollToTop} aria-label="Wróć na górę" title="Wróć na górę" style={{ position: "fixed", bottom: 24, right: 20, zIndex: 40, width: 36, height: 36, borderRadius: "50%", background: "rgba(108,99,255,0.18)", border: "1px solid rgba(108,99,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(10px)", boxShadow: "0 4px 16px rgba(108,99,255,0.2)", opacity: show ? 1 : 0, transform: show ? "translateY(0) scale(1)" : "translateY(10px) scale(0.85)", pointerEvents: show ? "all" : "none", transition: "opacity 0.3s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1)" }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+    <button
+      onClick={scrollToTop}
+      aria-label="Wróć na górę"
+      title="Wróć na górę"
+      style={{ position: "fixed", bottom: 24, right: 20, zIndex: 40, width: 36, height: 36, borderRadius: "50%", background: "rgba(108,99,255,0.18)", border: "1px solid rgba(108,99,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(10px)", boxShadow: "0 4px 16px rgba(108,99,255,0.2)", opacity: show ? 1 : 0, transform: show ? "translateY(0) scale(1)" : "translateY(10px) scale(0.85)", pointerEvents: show ? "all" : "none", transition: "opacity 0.3s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1)" }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
     </button>
   );
 }
 
-function SideNav({ sections, active, containerRef }: { sections: Section[]; active: string; containerRef: React.RefObject<HTMLDivElement> }) {
+// ── SideNav (naprawiony) ──────────────────────────────────
+function SideNav({
+  sections,
+  active,
+  containerRef,
+}: {
+  sections:     Section[];
+  active:       string;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   const scrollTo = useCallback((id: string) => {
     const el  = document.getElementById(id);
     const cnt = containerRef.current;
     if (!el || !cnt) return;
     cnt.scrollTo({ top: el.offsetTop - 28, behavior: "smooth" });
   }, [containerRef]);
+
   return (
-    <nav aria-label="Nawigacja sekcji" style={{ position: "fixed", right: 14, top: "50%", transform: "translateY(-50%)", zIndex: 40, display: "flex", flexDirection: "column", gap: 14 }}>
+    <nav
+      aria-label="Nawigacja sekcji"
+      style={{ position: "fixed", right: 14, top: "50%", transform: "translateY(-50%)", zIndex: 40, display: "flex", flexDirection: "column", gap: 14 }}
+    >
       {sections.map((s) => {
         const isActive  = active === s.id;
         const isHovered = hoveredId === s.id;
         const highlight = isActive || isHovered;
         return (
-          <button key={s.id} onClick={() => scrollTo(s.id)} onMouseEnter={() => setHoveredId(s.id)} onMouseLeave={() => setHoveredId(null)} title={s.label} aria-label={`Przejdź do sekcji: ${s.label}`} aria-current={isActive ? "true" : undefined} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7, background: "none", border: "none", cursor: "pointer", padding: "2px 0", outline: "none" }}>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: highlight ? "rgba(255,255,255,0.72)" : "transparent", transform: highlight ? "translateX(0)" : "translateX(8px)", opacity: highlight ? 1 : 0, transition: "all 0.28s cubic-bezier(.22,1,.36,1)", userSelect: "none", whiteSpace: "nowrap" }}>{s.label}</span>
+          <button
+            key={s.id}
+            onClick={() => scrollTo(s.id)}
+            onMouseEnter={() => setHoveredId(s.id)}
+            onMouseLeave={() => setHoveredId(null)}
+            title={s.label}
+            aria-label={`Przejdź do sekcji: ${s.label}`}
+            aria-current={isActive ? "true" : undefined}
+            style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7, background: "none", border: "none", cursor: "pointer", padding: "2px 0", outline: "none" }}
+          >
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: highlight ? "rgba(255,255,255,0.72)" : "transparent", transform: highlight ? "translateX(0)" : "translateX(8px)", opacity: highlight ? 1 : 0, transition: "all 0.28s cubic-bezier(.22,1,.36,1)", userSelect: "none", whiteSpace: "nowrap" }}>
+              {s.label}
+            </span>
             <div style={{ width: isActive ? 10 : isHovered ? 7 : 5, height: isActive ? 10 : isHovered ? 7 : 5, borderRadius: "50%", flexShrink: 0, background: isActive ? "linear-gradient(135deg,#6c63ff,#a855f7)" : isHovered ? "rgba(108,99,255,0.65)" : "rgba(255,255,255,0.2)", boxShadow: isActive ? "0 0 14px rgba(108,99,255,0.9)" : isHovered ? "0 0 8px rgba(108,99,255,0.5)" : "none", border: !highlight ? "1px solid rgba(255,255,255,0.13)" : "none", transition: "all 0.3s cubic-bezier(.34,1.56,.64,1)" }} />
           </button>
         );
@@ -159,6 +221,7 @@ function SideNav({ sections, active, containerRef }: { sections: Section[]; acti
   );
 }
 
+// ── SectionDivider ────────────────────────────────────────
 function SectionDivider({ label }: { label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 0", userSelect: "none" }}>
@@ -169,10 +232,14 @@ function SectionDivider({ label }: { label: string }) {
   );
 }
 
+// ── HDivider ──────────────────────────────────────────────
 function HDivider() {
-  return <div aria-hidden="true" style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "18px 0 16px", flexShrink: 0 }} />;
+  return (
+    <div aria-hidden="true" style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "18px 0 16px", flexShrink: 0 }} />
+  );
 }
 
+// ── FadeSection ───────────────────────────────────────────
 function FadeSection({ delay = 0, translateY = 12, children }: { delay?: number; translateY?: number; children: React.ReactNode }) {
   const { ref, inView } = useInView(0.08);
   return (
@@ -182,6 +249,7 @@ function FadeSection({ delay = 0, translateY = 12, children }: { delay?: number;
   );
 }
 
+// ── EnterSection ──────────────────────────────────────────
 function EnterSection({ step, minStep, delay = 0, children }: { step: number; minStep: number; delay?: number; children: React.ReactNode }) {
   const show = step >= minStep;
   return (
@@ -191,6 +259,7 @@ function EnterSection({ step, minStep, delay = 0, children }: { step: number; mi
   );
 }
 
+// ── MainCard ──────────────────────────────────────────────
 function MainCard({ step, children }: { step: number; children: React.ReactNode }) {
   const show = step >= 1;
   return (
@@ -200,6 +269,7 @@ function MainCard({ step, children }: { step: number; children: React.ReactNode 
   );
 }
 
+// ── Footer ────────────────────────────────────────────────
 function Footer({ visible }: { visible: boolean }) {
   return (
     <footer style={{ textAlign: "center", padding: "10px 0 28px", opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(8px)", transition: "opacity 0.5s ease 0.5s, transform 0.5s ease 0.5s" }}>
@@ -214,6 +284,7 @@ function Footer({ visible }: { visible: boolean }) {
   );
 }
 
+// ── PageTransitionOverlay ─────────────────────────────────
 function PageTransitionOverlay({ phase }: { phase: AppPhase }) {
   const visible = phase === "entering";
   return (
@@ -228,8 +299,10 @@ export default function HomeClient({ content }: { content: ContentData }) {
   const progress          = useScrollProgress(containerRef);
   const step              = useMountSequence(phase === "ready");
   const sectionIds        = useMemo(() => SECTIONS.map((s) => s.id), []);
-  const active            = useActiveSection(sectionIds);
-  const showBackToTop     = useShowBackToTop(containerRef);
+
+  // ← ZMIANA: przekazujemy containerRef do hooka
+  const active        = useActiveSection(sectionIds, containerRef);
+  const showBackToTop = useShowBackToTop(containerRef);
 
   const handleLoadComplete = useCallback(() => {
     setPhase("entering");
@@ -244,6 +317,7 @@ export default function HomeClient({ content }: { content: ContentData }) {
     <>
       <PageTransitionOverlay phase={phase} />
       <ScrollProgressBar     progress={progress} />
+      {/* ← ZMIANA: containerRef przekazany do SideNav */}
       <SideNav sections={SECTIONS} active={active} containerRef={containerRef} />
       <BackToTop show={showBackToTop} containerRef={containerRef} />
       <Background />
