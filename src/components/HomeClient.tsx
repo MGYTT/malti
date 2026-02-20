@@ -279,7 +279,7 @@ function Footer({ visible }: { visible: boolean }) {
         <span style={{ margin: "0 6px", opacity: 0.35 }}>•</span>
         Wszelkie prawa zastrzeżone
         <span style={{ margin: "0 6px", opacity: 0.35 }}>•</span>
-        <span style={{ color: "rgba(108,99,255,0.4)" }}>v2.0</span>
+        <span style={{ color: "rgba(108,99,255,0.4)" }}>Created by MGYT</span>
       </p>
     </footer>
   );
