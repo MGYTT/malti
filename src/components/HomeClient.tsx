@@ -6,14 +6,15 @@ import {
   useCallback, useMemo,
 } from "react";
 
-import Background    from "@/components/Background";
-import AvatarHeader  from "@/components/AvatarHeader";
-import StatsRow      from "@/components/StatsRow";
-import SocialIcons   from "@/components/SocialIcons";
-import LinksList     from "@/components/LinksList";
-import CollabSection from "@/components/CollabSection";
-import LoadingScreen from "@/components/LoadingScreen";
-import { ContentData } from "@/types/content";
+import Background         from "@/components/Background";
+import AvatarHeader       from "@/components/AvatarHeader";
+import StatsRow           from "@/components/StatsRow";
+import SocialIcons        from "@/components/SocialIcons";
+import LinksList          from "@/components/LinksList";
+import CollabSection      from "@/components/CollabSection";
+import LoadingScreen      from "@/components/LoadingScreen";
+import NotificationBanner from "@/components/NotificationBanner";
+import { ContentData }    from "@/types/content";
 
 // ── Typy ─────────────────────────────────────────────────
 type AppPhase = "loading" | "entering" | "ready";
@@ -25,7 +26,7 @@ const SECTIONS: Section[] = [
   { id: "collab",  label: "Współpraca" },
 ];
 
-// ── Hooki — bez zmian ─────────────────────────────────────
+// ── Hooki ─────────────────────────────────────────────────
 function useActiveSection(ids: string[]) {
   const [active, setActive] = useState(ids[0]);
   useEffect(() => {
@@ -113,7 +114,7 @@ function useShowBackToTop(ref: React.RefObject<HTMLDivElement>) {
   return show;
 }
 
-// ── UI komponenty — bez zmian ─────────────────────────────
+// ── UI komponenty ─────────────────────────────────────────
 function ScrollProgressBar({ progress }: { progress: number }) {
   return (
     <div aria-hidden="true" style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, height: 2, background: "rgba(255,255,255,0.04)", pointerEvents: "none" }}>
@@ -247,9 +248,18 @@ export default function HomeClient({ content }: { content: ContentData }) {
       <BackToTop show={showBackToTop} containerRef={containerRef} />
       <Background />
 
-      <div ref={containerRef} className="scroll-container" style={{ position: "relative", zIndex: 10, width: "100%", height: "100dvh", overflowY: "auto" }}>
+      <div
+        ref={containerRef}
+        className="scroll-container"
+        style={{ position: "relative", zIndex: 10, width: "100%", height: "100dvh", overflowY: "auto" }}
+      >
         <div style={{ display: "flex", justifyContent: "center", padding: "clamp(24px, 5vw, 44px) clamp(12px, 4vw, 20px)", minHeight: "100%" }}>
           <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 14 }}>
+
+            {/* ══ POWIADOMIENIA — nad kartą ══ */}
+            <EnterSection step={step} minStep={1} delay={0}>
+              <NotificationBanner notifications={content.notifications ?? []} />
+            </EnterSection>
 
             <MainCard step={step}>
 

@@ -2,9 +2,31 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ContentData } from "@/types/content";
+import type { ContentData, ContentNotification, NotificationVariant } from "@/types/content";
 
 type SaveState = "idle" | "saving" | "success" | "error";
+
+// ── Paleta wariantów ──────────────────────────────────────
+const VARIANT_OPTIONS: {
+  value: NotificationVariant;
+  label: string;
+  color: string;
+  bg:    string;
+}[] = [
+  { value: "stream",  label: "🎮 Stream",  color: "#a78bfa", bg: "rgba(108,99,255,0.15)"  },
+  { value: "info",    label: "ℹ️ Info",     color: "#60a5fa", bg: "rgba(59,130,246,0.15)"  },
+  { value: "alert",   label: "⚠️ Ważne",    color: "#fbbf24", bg: "rgba(251,191,36,0.15)"  },
+  { value: "success", label: "✅ Sukces",   color: "#4ade80", bg: "rgba(34,197,94,0.15)"   },
+  { value: "promo",   label: "🎉 Event",    color: "#f472b6", bg: "rgba(236,72,153,0.15)"  },
+];
+
+const VARIANT_COLOR: Record<NotificationVariant, string> = {
+  stream:  "#a78bfa",
+  info:    "#60a5fa",
+  alert:   "#fbbf24",
+  success: "#4ade80",
+  promo:   "#f472b6",
+};
 
 // ── Field ─────────────────────────────────────────────────
 function Field({
@@ -21,7 +43,6 @@ function Field({
   placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: focused ? "rgba(167,139,250,0.8)" : "rgba(255,255,255,0.4)", transition: "color 0.2s ease" }}>
@@ -34,19 +55,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={{
-          background:   focused ? "rgba(108,99,255,0.06)" : "rgba(255,255,255,0.05)",
-          border:       `1px solid ${focused ? "rgba(108,99,255,0.6)" : "rgba(108,99,255,0.25)"}`,
-          borderRadius: 8,
-          padding:      "8px 12px",
-          color:        "#e2e8f0",
-          fontSize:     13,
-          fontFamily:   "'Inter', sans-serif",
-          outline:      "none",
-          width:        "100%",
-          transition:   "border-color 0.2s ease, background 0.2s ease",
-          boxSizing:    "border-box",
-        }}
+        style={{ background: focused ? "rgba(108,99,255,0.06)" : "rgba(255,255,255,0.05)", border: `1px solid ${focused ? "rgba(108,99,255,0.6)" : "rgba(108,99,255,0.25)"}`, borderRadius: 8, padding: "8px 12px", color: "#e2e8f0", fontSize: 13, fontFamily: "'Inter', sans-serif", outline: "none", width: "100%", transition: "border-color 0.2s ease, background 0.2s ease", boxSizing: "border-box" }}
       />
     </div>
   );
@@ -58,34 +67,23 @@ function AdminSection({
   emoji,
   children,
   collapsible = false,
+  defaultOpen = true,
 }: {
-  title:         string;
-  emoji:         string;
-  children:      React.ReactNode;
-  collapsible?:  boolean;
+  title:        string;
+  emoji:        string;
+  children:     React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(true);
-
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(108,99,255,0.15)", borderRadius: 14, overflow: "hidden" }}>
-
-      {/* Nagłówek sekcji */}
       <div
         onClick={collapsible ? () => setOpen((v) => !v) : undefined}
-        style={{
-          display:      "flex",
-          alignItems:   "center",
-          justifyContent: "space-between",
-          padding:      "14px 20px",
-          cursor:       collapsible ? "pointer" : "default",
-          borderBottom: open ? "1px solid rgba(108,99,255,0.1)" : "none",
-          transition:   "border-color 0.2s ease",
-          userSelect:   "none",
-        }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", cursor: collapsible ? "pointer" : "default", borderBottom: open ? "1px solid rgba(108,99,255,0.1)" : "none", transition: "border-color 0.2s ease", userSelect: "none" }}
       >
         <h2 style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a78bfa", display: "flex", alignItems: "center", gap: 7, margin: 0 }}>
-          <span>{emoji}</span>
-          {title}
+          <span>{emoji}</span>{title}
         </h2>
         {collapsible && (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.25s ease", flexShrink: 0 }} aria-hidden="true">
@@ -93,8 +91,6 @@ function AdminSection({
           </svg>
         )}
       </div>
-
-      {/* Zawartość */}
       <div style={{ display: open ? "flex" : "none", flexDirection: "column", gap: 14, padding: "18px 20px" }}>
         {children}
       </div>
@@ -103,33 +99,11 @@ function AdminSection({
 }
 
 // ── ToggleButton ──────────────────────────────────────────
-function ToggleButton({
-  active,
-  onLabel,
-  offLabel,
-  onClick,
-}: {
-  active:   boolean;
-  onLabel:  string;
-  offLabel: string;
-  onClick:  () => void;
-}) {
+function ToggleButton({ active, onLabel, offLabel, onClick }: { active: boolean; onLabel: string; offLabel: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        background:   active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
-        border:       `1px solid ${active ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
-        borderRadius: 999,
-        padding:      "5px 16px",
-        color:        active ? "#4ade80" : "#f87171",
-        fontSize:     11,
-        fontWeight:   700,
-        cursor:       "pointer",
-        fontFamily:   "'Inter', sans-serif",
-        transition:   "all 0.2s ease",
-        whiteSpace:   "nowrap",
-      }}
+      style={{ background: active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", border: `1px solid ${active ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`, borderRadius: 999, padding: "5px 16px", color: active ? "#4ade80" : "#f87171", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s ease", whiteSpace: "nowrap" }}
     >
       {active ? onLabel : offLabel}
     </button>
@@ -137,56 +111,238 @@ function ToggleButton({
 }
 
 // ── SaveButton ────────────────────────────────────────────
-function SaveButton({
-  state,
-  onClick,
-  hasUnsaved,
-}: {
-  state:      SaveState;
-  onClick:    () => void;
-  hasUnsaved: boolean;
-}) {
-  const label = {
-    idle:    hasUnsaved ? "💾 Zapisz zmiany" : "💾 Zapisz",
-    saving:  "⏳ Zapisuję...",
-    success: "✅ Zapisano!",
-    error:   "❌ Błąd zapisu",
-  }[state];
-
-  const bg = {
-    idle:    "linear-gradient(135deg,#6c63ff,#a855f7)",
-    saving:  "linear-gradient(135deg,#6c63ff,#a855f7)",
-    success: "linear-gradient(135deg,#22c55e,#16a34a)",
-    error:   "linear-gradient(135deg,#ef4444,#dc2626)",
-  }[state];
-
+function SaveButton({ state, onClick, hasUnsaved }: { state: SaveState; onClick: () => void; hasUnsaved: boolean }) {
+  const label = { idle: hasUnsaved ? "💾 Zapisz zmiany" : "💾 Zapisz", saving: "⏳ Zapisuję...", success: "✅ Zapisano!", error: "❌ Błąd zapisu" }[state];
+  const bg    = { idle: "linear-gradient(135deg,#6c63ff,#a855f7)", saving: "linear-gradient(135deg,#6c63ff,#a855f7)", success: "linear-gradient(135deg,#22c55e,#16a34a)", error: "linear-gradient(135deg,#ef4444,#dc2626)" }[state];
   return (
     <button
       onClick={onClick}
       disabled={state === "saving"}
-      style={{
-        background:    bg,
-        border:        hasUnsaved && state === "idle"
-          ? "1px solid rgba(255,255,255,0.2)"
-          : "none",
-        borderRadius:  10,
-        padding:       "10px 22px",
-        color:         "#fff",
-        fontWeight:    800,
-        fontSize:      12,
-        cursor:        state === "saving" ? "not-allowed" : "pointer",
-        fontFamily:    "'Inter', sans-serif",
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-        minWidth:      140,
-        transition:    "background 0.3s ease, box-shadow 0.3s ease",
-        boxShadow:     hasUnsaved && state === "idle"
-          ? "0 0 20px rgba(108,99,255,0.4)"
-          : "none",
-      }}
+      style={{ background: bg, border: hasUnsaved && state === "idle" ? "1px solid rgba(255,255,255,0.2)" : "none", borderRadius: 10, padding: "10px 22px", color: "#fff", fontWeight: 800, fontSize: 12, cursor: state === "saving" ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em", textTransform: "uppercase", minWidth: 140, transition: "background 0.3s ease, box-shadow 0.3s ease", boxShadow: hasUnsaved && state === "idle" ? "0 0 20px rgba(108,99,255,0.4)" : "none" }}
     >
       {label}
     </button>
+  );
+}
+
+// ── Podgląd powiadomienia ─────────────────────────────────
+function NotificationPreview({ n }: { n: ContentNotification }) {
+  const color = VARIANT_COLOR[n.variant] ?? "#a78bfa";
+  const isEmpty = !n.title && !n.message;
+
+  return (
+    <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${color}40`, background: `${color}08`, padding: "10px 12px", display: "flex", alignItems: "flex-start", gap: 10, opacity: isEmpty ? 0.35 : 1, transition: "opacity 0.2s ease" }}>
+      {/* Shimmer top */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,transparent,${color},transparent)` }} />
+      <span style={{ fontSize: 18, flexShrink: 0, filter: `drop-shadow(0 0 6px ${color})` }}>
+        {n.emoji || "🔔"}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
+          <span style={{ fontSize: "8px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color, background: `${color}20`, border: `1px solid ${color}40`, borderRadius: 4, padding: "1px 6px", userSelect: "none" }}>
+            {VARIANT_OPTIONS.find((v) => v.value === n.variant)?.label.split(" ")[1]?.toUpperCase() ?? "NOTIF"}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+            {n.title || <span style={{ opacity: 0.3 }}>Tytuł powiadomienia...</span>}
+          </span>
+        </div>
+        {n.message && (
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", margin: "0 0 4px", lineHeight: 1.4 }}>
+            {n.message}
+          </p>
+        )}
+        {n.url && n.urlLabel && (
+          <span style={{ fontSize: 10, fontWeight: 700, color, opacity: 0.8 }}>
+            {n.urlLabel} →
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Edytor pojedynczego powiadomienia ─────────────────────
+function NotificationEditor({
+  notification: n,
+  index:        i,
+  onChange,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: {
+  notification: ContentNotification;
+  index:        number;
+  onChange:     (i: number, updated: ContentNotification) => void;
+  onDelete:     (i: number) => void;
+  onMoveUp:     (i: number) => void;
+  onMoveDown:   (i: number) => void;
+  isFirst:      boolean;
+  isLast:       boolean;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const up = (field: keyof ContentNotification, val: unknown) =>
+    onChange(i, { ...n, [field]: val });
+
+  const color = VARIANT_COLOR[n.variant] ?? "#a78bfa";
+
+  return (
+    <div style={{ background: n.visible ? "rgba(108,99,255,0.04)" : "rgba(255,255,255,0.02)", border: `1px solid ${n.visible ? `${color}35` : "rgba(255,255,255,0.06)"}`, borderRadius: 12, overflow: "hidden", opacity: n.visible ? 1 : 0.5, transition: "all 0.2s ease" }}>
+
+      {/* ── Nagłówek karty powiadomienia ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: n.visible ? `${color}08` : "transparent", borderBottom: expanded ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+
+        {/* Strzałki kolejności */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+          <button
+            onClick={() => onMoveUp(i)}
+            disabled={isFirst}
+            title="Przesuń wyżej"
+            style={{ background: "none", border: "none", cursor: isFirst ? "not-allowed" : "pointer", color: isFirst ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.35)", padding: "1px 4px", fontSize: 10, lineHeight: 1, transition: "color 0.15s ease" }}
+          >▲</button>
+          <button
+            onClick={() => onMoveDown(i)}
+            disabled={isLast}
+            title="Przesuń niżej"
+            style={{ background: "none", border: "none", cursor: isLast ? "not-allowed" : "pointer", color: isLast ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.35)", padding: "1px 4px", fontSize: 10, lineHeight: 1, transition: "color 0.15s ease" }}
+          >▼</button>
+        </div>
+
+        {/* Emoji + tytuł */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left", padding: 0, minWidth: 0 }}
+        >
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{n.emoji || "🔔"}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: n.visible ? color : "rgba(255,255,255,0.3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+            {n.title || <span style={{ opacity: 0.4 }}>Bez tytułu</span>}
+          </span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.2s ease", flexShrink: 0 }} aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        {/* Akcje */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <ToggleButton
+            active={n.visible}
+            onLabel="👁 Wł"
+            offLabel="🚫 Wył"
+            onClick={() => up("visible", !n.visible)}
+          />
+          <button
+            onClick={() => onDelete(i)}
+            title="Usuń powiadomienie"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6, padding: "4px 10px", color: "#f87171", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.2s ease", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.18)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+          >
+            🗑
+          </button>
+        </div>
+      </div>
+
+      {/* ── Formularz ── */}
+      {expanded && (
+        <div style={{ padding: "16px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Podgląd live */}
+          <div style={{ position: "relative" }}>
+            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 6 }}>
+              PODGLĄD
+            </p>
+            <NotificationPreview n={n} />
+          </div>
+
+          {/* Separator */}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
+
+          {/* Wariant */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+              Wariant
+            </label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {VARIANT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => up("variant", opt.value)}
+                  style={{ background: n.variant === opt.value ? opt.bg : "rgba(255,255,255,0.04)", border: `1px solid ${n.variant === opt.value ? opt.color : "rgba(255,255,255,0.1)"}`, borderRadius: 8, padding: "5px 12px", color: n.variant === opt.value ? opt.color : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s ease" }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Emoji + tytuł */}
+          <div style={{ display: "grid", gridTemplateColumns: "72px 1fr", gap: 8 }}>
+            <Field label="Emoji" value={n.emoji} onChange={(v) => up("emoji", v)} placeholder="🎮"/>
+            <Field label="Tytuł" value={n.title} onChange={(v) => up("title", v)} placeholder="np. Stream dziś o 23:00!"/>
+          </div>
+
+          {/* Opis */}
+          <Field
+            label="Opis (opcjonalny)"
+            value={n.message}
+            onChange={(v) => up("message", v)}
+            placeholder="np. Wpadaj na live — gramy razem do białego rana"
+          />
+
+          {/* URL + etykieta */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 156px", gap: 8 }}>
+            <Field
+              label="Link (opcjonalny)"
+              value={n.url ?? ""}
+              onChange={(v) => up("url", v || undefined)}
+              type="url"
+              placeholder="https://"
+            />
+            <Field
+              label="Etykieta linku"
+              value={n.urlLabel ?? ""}
+              onChange={(v) => up("urlLabel", v || undefined)}
+              placeholder="Dołącz →"
+            />
+          </div>
+
+          {/* Opcje dodatkowe */}
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={n.dismissible}
+                onChange={(e) => up("dismissible", e.target.checked)}
+                style={{ accentColor: "#6c63ff", width: 14, height: 14, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}>
+                Użytkownik może zamknąć
+              </span>
+            </label>
+          </div>
+
+          {/* Data wygaśnięcia */}
+          <Field
+            label="Wygasa automatycznie (opcjonalnie)"
+            value={n.expiresAt ?? ""}
+            onChange={(v) => up("expiresAt", v || undefined)}
+            type="datetime-local"
+          />
+
+          {/* Info o ID */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", fontFamily: "monospace" }}>
+              ID: {n.id}
+            </span>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.1)" }}>
+              — używany do zapamiętania zamknięcia przez użytkownika
+            </span>
+          </div>
+
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -201,17 +357,19 @@ export default function AdminPage() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
 
-  // Czy są niezapisane zmiany
-  const hasUnsaved = data !== null &&
+  const hasUnsaved =
+    data !== null &&
     original !== null &&
     JSON.stringify(data) !== JSON.stringify(original);
 
-  // ── Wczytaj dane po zalogowaniu ───────────────────────
+  // ── Wczytaj dane ─────────────────────────────────────
   useEffect(() => {
     if (!authed) return;
     fetch("/api/content")
       .then((r) => r.json())
       .then((d: ContentData) => {
+        // Normalizacja — upewnij się że notifications istnieje
+        if (!Array.isArray(d.notifications)) d.notifications = [];
         setData(d);
         setOriginal(structuredClone(d));
       })
@@ -234,19 +392,14 @@ export default function AdminPage() {
     e.preventDefault();
     setAuthError(false);
     setLoading(true);
-
     try {
       const r = await fetch("/api/content", {
         method:  "POST",
-        headers: {
-          "Content-Type":     "application/json",
-          "x-admin-password": password,
-        },
-        body: JSON.stringify({}),
+        headers: { "Content-Type": "application/json", "x-admin-password": password },
+        body:    JSON.stringify({}),
       });
-
-      if (r.ok)              setAuthed(true);
-      else                   setAuthError(true);
+      if (r.ok) setAuthed(true);
+      else      setAuthError(true);
     } catch {
       setAuthError(true);
     } finally {
@@ -261,17 +414,13 @@ export default function AdminPage() {
     try {
       const r = await fetch("/api/content", {
         method:  "POST",
-        headers: {
-          "Content-Type":     "application/json",
-          "x-admin-password": password,
-        },
-        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json", "x-admin-password": password },
+        body:    JSON.stringify(data),
       });
-
       if (r.ok) {
         setSaveState("success");
         setLastSaved(new Date().toLocaleTimeString("pl-PL"));
-        setOriginal(structuredClone(data));   // ← reset "unsaved" tracker
+        setOriginal(structuredClone(data));
         setTimeout(() => setSaveState("idle"), 3000);
       } else {
         setSaveState("error");
@@ -283,10 +432,9 @@ export default function AdminPage() {
     }
   }, [data, password]);
 
-  // ── Reset zmian ───────────────────────────────────────
+  // ── Reset ─────────────────────────────────────────────
   const handleReset = useCallback(() => {
-    if (!original) return;
-    if (!hasUnsaved) return;
+    if (!original || !hasUnsaved) return;
     if (!confirm("Cofnąć wszystkie niezapisane zmiany?")) return;
     setData(structuredClone(original));
   }, [original, hasUnsaved]);
@@ -305,6 +453,53 @@ export default function AdminPage() {
     });
   }
 
+  // ── Operacje na powiadomieniach ───────────────────────
+  function notifChange(idx: number, updated: ContentNotification) {
+    if (!data) return;
+    const next = [...data.notifications];
+    next[idx] = updated;
+    update(["notifications"], next);
+  }
+
+  function notifDelete(idx: number) {
+    if (!data) return;
+    if (!confirm("Usunąć to powiadomienie?")) return;
+    const next = [...data.notifications];
+    next.splice(idx, 1);
+    update(["notifications"], next);
+  }
+
+  function notifMoveUp(idx: number) {
+    if (!data || idx === 0) return;
+    const next = [...data.notifications];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    update(["notifications"], next);
+  }
+
+  function notifMoveDown(idx: number) {
+    if (!data || idx === data.notifications.length - 1) return;
+    const next = [...data.notifications];
+    [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+    update(["notifications"], next);
+  }
+
+  function notifAdd() {
+    if (!data) return;
+    const newNotif: ContentNotification = {
+      id:          `notif-${Date.now()}`,
+      variant:     "stream",
+      emoji:       "🎮",
+      title:       "",
+      message:     "",
+      url:         undefined,
+      urlLabel:    undefined,
+      visible:     true,
+      dismissible: true,
+      expiresAt:   undefined,
+    };
+    update(["notifications"], [...data.notifications, newNotif]);
+  }
+
   // ── Login screen ──────────────────────────────────────
   if (!authed) {
     return (
@@ -313,22 +508,17 @@ export default function AdminPage() {
           onSubmit={handleLogin}
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: 18, padding: "32px 28px", width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 18 }}
         >
-          {/* Logo */}
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🔐</div>
             <h1 style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", margin: 0 }}>Panel Admina</h1>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>MALTIXON — zarządzanie treścią</p>
           </div>
-
           <Field label="Hasło" value={password} onChange={setPassword} type="password" placeholder="Wpisz hasło dostępu"/>
-
           {authError && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "8px 12px" }}>
-              <span style={{ fontSize: 12 }}>❌</span>
-              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Nieprawidłowe hasło</span>
+              <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>❌ Nieprawidłowe hasło</span>
             </div>
           )}
-
           <button
             type="submit"
             disabled={loading || !password.trim()}
@@ -352,6 +542,9 @@ export default function AdminPage() {
     );
   }
 
+  const notifications = data.notifications ?? [];
+  const activeCount   = notifications.filter((n) => n.visible).length;
+
   // ── Panel główny ──────────────────────────────────────
   return (
     <div style={{ minHeight: "100vh", background: "#07070f", fontFamily: "'Inter', sans-serif", color: "#e2e8f0", padding: "clamp(20px, 5vw, 40px) clamp(16px, 5vw, 24px)" }}>
@@ -360,9 +553,7 @@ export default function AdminPage() {
         {/* ── Nagłówek ── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 28 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", color: "#fff", margin: 0 }}>
-              ⚙️ Panel Admina
-            </h1>
+            <h1 style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", color: "#fff", margin: 0 }}>⚙️ Panel Admina</h1>
             <p style={{ fontSize: 11, marginTop: 4, margin: "4px 0 0" }}>
               {hasUnsaved
                 ? <span style={{ color: "#fbbf24", fontWeight: 600 }}>● Niezapisane zmiany</span>
@@ -372,10 +563,7 @@ export default function AdminPage() {
               }
             </p>
           </div>
-
-          {/* Przyciski akcji */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Reset — tylko gdy są niezapisane zmiany */}
             {hasUnsaved && (
               <button
                 onClick={handleReset}
@@ -388,11 +576,51 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ── Sekcje ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
+          {/* ── POWIADOMIENIA ── */}
+          <AdminSection
+            title={`Powiadomienia${activeCount > 0 ? ` — ${activeCount} aktywne` : " — brak aktywnych"}`}
+            emoji="🔔"
+          >
+            {notifications.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 32, opacity: 0.3 }}>🔕</span>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", margin: 0 }}>
+                  Brak powiadomień — kliknij przycisk poniżej aby dodać
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {notifications.map((n, i) => (
+                  <NotificationEditor
+                    key={n.id}
+                    notification={n}
+                    index={i}
+                    onChange={notifChange}
+                    onDelete={notifDelete}
+                    onMoveUp={notifMoveUp}
+                    onMoveDown={notifMoveDown}
+                    isFirst={i === 0}
+                    isLast={i === notifications.length - 1}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Dodaj nowe */}
+            <button
+              onClick={notifAdd}
+              style={{ background: "rgba(108,99,255,0.08)", border: "1px dashed rgba(108,99,255,0.3)", borderRadius: 10, padding: "12px", color: "rgba(167,139,250,0.7)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", width: "100%", transition: "all 0.2s ease", letterSpacing: "0.04em" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(108,99,255,0.14)"; e.currentTarget.style.borderColor = "rgba(108,99,255,0.5)"; e.currentTarget.style.color = "#a78bfa"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(108,99,255,0.08)"; e.currentTarget.style.borderColor = "rgba(108,99,255,0.3)"; e.currentTarget.style.color = "rgba(167,139,250,0.7)"; }}
+            >
+              + Dodaj powiadomienie
+            </button>
+          </AdminSection>
+
           {/* ── STATUS ── */}
-          <AdminSection title="Status" emoji="🟢">
+          <AdminSection title="Status" emoji="🟢" collapsible>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Dostępny na współpracę:</span>
               <ToggleButton
@@ -402,52 +630,21 @@ export default function AdminPage() {
                 onClick={() => update(["status", "available"], !data.status.available)}
               />
             </div>
-            <Field
-              label="Tekst statusu (widoczny na stronie)"
-              value={data.status.text}
-              onChange={(v) => update(["status", "text"], v)}
-              placeholder="np. Otwarty na współpracę"
-            />
-            <Field
-              label="Info o streamie"
-              value={data.status.streamInfo}
-              onChange={(v) => update(["status", "streamInfo"], v)}
-              placeholder="np. Stream w każdy piątek 20:00"
-            />
+            <Field label="Tekst statusu (widoczny na stronie)" value={data.status.text} onChange={(v) => update(["status", "text"], v)} placeholder="np. Otwarty na współpracę"/>
+            <Field label="Info o streamie" value={data.status.streamInfo} onChange={(v) => update(["status", "streamInfo"], v)} placeholder="np. Stream w każdy piątek 20:00"/>
           </AdminSection>
 
           {/* ── STATYSTYKI ── */}
-          <AdminSection title="Statystyki" emoji="📊" collapsible>
+          <AdminSection title="Statystyki" emoji="📊" collapsible defaultOpen={false}>
             {(["subscribers", "views", "followers"] as const).map((key) => {
-              const labels = {
-                subscribers: "YouTube — Subskrybenci",
-                views:       "Łącznie — Wyświetlenia",
-                followers:   "Instagram — Obserwujący",
-              };
+              const labels = { subscribers: "YouTube — Subskrybenci", views: "Łącznie — Wyświetlenia", followers: "Instagram — Obserwujący" };
               return (
                 <div key={key}>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 8 }}>
-                    {labels[key]}
-                  </p>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 8 }}>{labels[key]}</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10 }}>
-                    <Field
-                      label="Wartość liczbowa"
-                      value={data.stats[key].value}
-                      onChange={(v) => update(["stats", key, "value"], Number(v))}
-                      type="number"
-                    />
-                    <Field
-                      label="Wyświetlane (np. 592K)"
-                      value={data.stats[key].display}
-                      onChange={(v) => update(["stats", key, "display"], v)}
-                      placeholder="592K"
-                    />
-                    <Field
-                      label="Suffix"
-                      value={data.stats[key].suffix}
-                      onChange={(v) => update(["stats", key, "suffix"], v)}
-                      placeholder="K"
-                    />
+                    <Field label="Wartość liczbowa" value={data.stats[key].value} onChange={(v) => update(["stats", key, "value"], Number(v))} type="number"/>
+                    <Field label="Wyświetlane (np. 592K)" value={data.stats[key].display} onChange={(v) => update(["stats", key, "display"], v)} placeholder="592K"/>
+                    <Field label="Suffix" value={data.stats[key].suffix} onChange={(v) => update(["stats", key, "suffix"], v)} placeholder="K"/>
                   </div>
                 </div>
               );
@@ -455,95 +652,37 @@ export default function AdminPage() {
           </AdminSection>
 
           {/* ── LINKI ── */}
-          <AdminSection title={`Linki (${data.links.filter((l) => l.visible).length}/${data.links.length} widocznych)`} emoji="🔗" collapsible>
+          <AdminSection title={`Linki (${data.links.filter((l) => l.visible).length}/${data.links.length} widocznych)`} emoji="🔗" collapsible defaultOpen={false}>
             {data.links.map((link, i) => (
-              <div
-                key={link.id}
-                style={{
-                  background:    link.visible ? "rgba(108,99,255,0.04)" : "rgba(255,255,255,0.02)",
-                  border:        `1px solid ${link.visible ? "rgba(108,99,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  borderRadius:  10,
-                  padding:       "14px",
-                  display:       "flex",
-                  flexDirection: "column",
-                  gap:           10,
-                  opacity:       link.visible ? 1 : 0.45,
-                  transition:    "opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease",
-                }}
-              >
-                {/* Nagłówek linku */}
+              <div key={link.id} style={{ background: link.visible ? "rgba(108,99,255,0.04)" : "rgba(255,255,255,0.02)", border: `1px solid ${link.visible ? "rgba(108,99,255,0.2)" : "rgba(255,255,255,0.06)"}`, borderRadius: 10, padding: "14px", display: "flex", flexDirection: "column", gap: 10, opacity: link.visible ? 1 : 0.45, transition: "all 0.2s ease" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: link.color, display: "flex", alignItems: "center", gap: 6 }}>
-                    {link.emoji} {link.label}
-                  </span>
-                  <ToggleButton
-                    active={link.visible}
-                    onLabel="👁 Widoczny"
-                    offLabel="🚫 Ukryty"
-                    onClick={() => update(["links", String(i), "visible"], !link.visible)}
-                  />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: link.color, display: "flex", alignItems: "center", gap: 6 }}>{link.emoji} {link.label}</span>
+                  <ToggleButton active={link.visible} onLabel="👁 Widoczny" offLabel="🚫 Ukryty" onClick={() => update(["links", String(i), "visible"], !link.visible)}/>
                 </div>
-
-                {/* Pola linku */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Field
-                    label="Etykieta"
-                    value={link.label}
-                    onChange={(v) => update(["links", String(i), "label"], v)}
-                  />
-                  <Field
-                    label="Podtytuł"
-                    value={link.sub}
-                    onChange={(v) => update(["links", String(i), "sub"], v)}
-                  />
+                  <Field label="Etykieta" value={link.label} onChange={(v) => update(["links", String(i), "label"], v)}/>
+                  <Field label="Podtytuł" value={link.sub} onChange={(v) => update(["links", String(i), "sub"], v)}/>
                 </div>
-                <Field
-                  label="URL"
-                  value={link.url}
-                  onChange={(v) => update(["links", String(i), "url"], v)}
-                  type="url"
-                  placeholder="https://"
-                />
+                <Field label="URL" value={link.url} onChange={(v) => update(["links", String(i), "url"], v)} type="url" placeholder="https://"/>
               </div>
             ))}
           </AdminSection>
 
           {/* ── PROFIL ── */}
-          <AdminSection title="Profil" emoji="👤">
-            <Field
-              label="Nazwa (widoczna w nagłówku)"
-              value={data.profile.name}
-              onChange={(v) => update(["profile", "name"], v)}
-            />
-            <Field
-              label="Tagline"
-              value={data.profile.tagline}
-              onChange={(v) => update(["profile", "tagline"], v)}
-              placeholder="np. Polski Streamer & Twórca"
-            />
-            <Field
-              label="Preferowany kontakt"
-              value={data.profile.preferred}
-              onChange={(v) => update(["profile", "preferred"], v)}
-              placeholder="np. Discord"
-            />
+          <AdminSection title="Profil" emoji="👤" collapsible defaultOpen={false}>
+            <Field label="Nazwa (widoczna w nagłówku)" value={data.profile.name} onChange={(v) => update(["profile", "name"], v)}/>
+            <Field label="Tagline" value={data.profile.tagline} onChange={(v) => update(["profile", "tagline"], v)} placeholder="np. Polski Streamer & Twórca"/>
+            <Field label="Preferowany kontakt" value={data.profile.preferred} onChange={(v) => update(["profile", "preferred"], v)} placeholder="np. Discord"/>
           </AdminSection>
 
         </div>
 
         {/* ── Stopka ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 28, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <a
-            href="/"
-            style={{ fontSize: 11, color: "rgba(108,99,255,0.55)", fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", transition: "color 0.2s ease" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(167,139,250,0.8)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(108,99,255,0.55)")}
-          >
+          <a href="/" style={{ fontSize: 11, color: "rgba(108,99,255,0.55)", fontWeight: 600, letterSpacing: "0.06em", textDecoration: "none", transition: "color 0.2s ease" }} onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(167,139,250,0.8)")} onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(108,99,255,0.55)")}>
             ← Wróć do strony głównej
           </a>
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.1)", fontWeight: 500, letterSpacing: "0.04em" }}>
-            MALTIXON Admin Panel
-          </span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.1)", fontWeight: 500, letterSpacing: "0.04em" }}>MALTIXON Admin Panel</span>
         </div>
 
       </div>

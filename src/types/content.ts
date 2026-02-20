@@ -28,9 +28,31 @@ export type ContentLink = {
   visible: boolean;
 };
 
+// ── NOWY TYP ──────────────────────────────────────────────
+export type NotificationVariant =
+  | "info"      // niebieski  — ogłoszenia
+  | "stream"    // fioletowy  — stream info
+  | "alert"     // żółty      — ważne info
+  | "success"   // zielony    — osiągnięcia
+  | "promo";    // różowy     — promocje/eventy
+
+export type ContentNotification = {
+  id:        string;
+  variant:   NotificationVariant;
+  emoji:     string;
+  title:     string;
+  message:   string;
+  url?:      string;       // opcjonalny link (np. do streamu)
+  urlLabel?: string;       // etykieta przycisku linku
+  visible:   boolean;
+  dismissible: boolean;    // czy użytkownik może zamknąć
+  expiresAt?:  string;     // ISO date — auto-ukrywa się po czasie
+};
+
 export type ContentData = {
-  stats:   ContentStats;
-  status:  ContentStatus;
-  profile: ContentProfile;
-  links:   ContentLink[];
+  stats:         ContentStats;
+  status:        ContentStatus;
+  profile:       ContentProfile;
+  links:         ContentLink[];
+  notifications: ContentNotification[];   // ← NOWE
 };

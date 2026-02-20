@@ -1,5 +1,5 @@
 // src/app/api/content/route.ts
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { Redis }                     from "@upstash/redis";
@@ -11,7 +11,7 @@ const redis    = Redis.fromEnv();
 const PASSWORD = process.env.ADMIN_PASSWORD ?? "zmien-to-haslo";
 const KEY      = "maltixon:content";
 
-// ── Dane domyślne (gdy baza pusta — pierwszy deploy) ──────
+// ── Dane domyślne ─────────────────────────────────────────
 const DEFAULT_DATA: ContentData = {
   stats: {
     subscribers: { value: 592, display: "592K", suffix: "K"  },
@@ -84,6 +84,22 @@ const DEFAULT_DATA: ContentData = {
       visible: true,
     },
   ],
+
+  // ── NOWE — powiadomienia ──────────────────────────────
+  notifications: [
+    {
+      id:          "stream-today",
+      variant:     "stream",
+      emoji:       "🎮",
+      title:       "Stream dziś o 23:00!",
+      message:     "Wpadaj na live — gramy razem do białego rana",
+      url:         "https://www.youtube.com/@maltixon",
+      urlLabel:    "Dołącz do streamu →",
+      visible:     true,
+      dismissible: true,
+      expiresAt:   undefined,
+    },
+  ],
 };
 
 // ── Walidacja struktury danych ────────────────────────────
@@ -95,6 +111,7 @@ function isValidContent(body: unknown): body is ContentData {
     typeof b.status  === "object" && b.status  !== null &&
     typeof b.profile === "object" && b.profile !== null &&
     Array.isArray(b.links)
+    // notifications opcjonalne — nie blokujemy starych zapisów bez tego pola
   );
 }
 
@@ -102,10 +119,19 @@ function isValidContent(body: unknown): body is ContentData {
 export async function GET() {
   try {
     const data = await redis.get<ContentData>(KEY);
-    return NextResponse.json(data ?? DEFAULT_DATA);
+
+    if (data) {
+      // Upewnij się że notifications istnieje
+      // (wsteczna kompatybilność ze starymi zapisami w Redis)
+      if (!Array.isArray(data.notifications)) {
+        data.notifications = [];
+      }
+      return NextResponse.json(data);
+    }
+
+    return NextResponse.json(DEFAULT_DATA);
   } catch (err) {
     console.error("[API/content GET]", err);
-    // Fallback na dane domyślne gdy Redis niedostępny
     return NextResponse.json(DEFAULT_DATA);
   }
 }
@@ -141,7 +167,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ authenticated: true });
   }
 
-  // 3. Walidacja struktury przy prawdziwym zapisie
+  // 3. Walidacja struktury
   if (!isValidContent(body)) {
     return NextResponse.json(
       { error: "Nieprawidłowa struktura danych" },
@@ -149,7 +175,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Zapis do Redis
+  // 4. Normalizacja — upewnij się że notifications istnieje
+  if (!Array.isArray(body.notifications)) {
+    (body as ContentData).notifications = [];
+  }
+
+  // 5. Zapis do Redis
   try {
     await redis.set(KEY, body);
   } catch (err) {
@@ -160,12 +191,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5. Rewalidacja cache Next.js — strona odświeży się od razu
+  // 6. Rewalidacja cache Next.js
   try {
     revalidatePath("/");
     revalidatePath("/admin");
   } catch {
-    // revalidatePath może nie działać w edge runtime na starszych wersjach
     // nie przerywamy — zapis już się udał
   }
 
