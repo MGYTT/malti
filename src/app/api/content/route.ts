@@ -1,11 +1,15 @@
+// src/app/api/content/route.ts
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, readFile }       from "fs/promises";
-import path                          from "path";
+import { writeFile, readFile }        from "fs/promises";
+import { revalidatePath }             from "next/cache";
+import path                           from "path";
 
 const DATA_PATH = path.join(process.cwd(), "src/data/content.json");
 const PASSWORD  = process.env.ADMIN_PASSWORD ?? "zmien-to-haslo";
 
-// ── GET — odczyt danych ───────────────────────────────────
+// ── GET ───────────────────────────────────────────────────
 export async function GET() {
   try {
     const raw  = await readFile(DATA_PATH, "utf-8");
@@ -13,16 +17,16 @@ export async function GET() {
     return NextResponse.json(data);
   } catch {
     return NextResponse.json(
-      { error: "Nie można odczytać danych" },
+      { error: "Błąd odczytu" },
       { status: 500 }
     );
   }
 }
 
-// ── POST — zapis danych ───────────────────────────────────
+// ── POST ──────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    // Sprawdź hasło z nagłówka
+    // 1. Sprawdź hasło ZAWSZE PIERWSZA
     const auth = req.headers.get("x-admin-password");
     if (auth !== PASSWORD) {
       return NextResponse.json(
@@ -33,7 +37,16 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Walidacja — upewnij się że dane mają właściwą strukturę
+    // 2. Jeśli puste body — to tylko test hasła (logowanie)
+    //    Zwróć 200 zamiast 400
+    const isEmpty =
+      !body.stats && !body.links && !body.status && !body.profile;
+
+    if (isEmpty) {
+      return NextResponse.json({ authenticated: true });
+    }
+
+    // 3. Walidacja struktury przy prawdziwym zapisie
     if (!body.stats || !body.links || !body.status || !body.profile) {
       return NextResponse.json(
         { error: "Nieprawidłowa struktura danych" },
@@ -41,12 +54,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await writeFile(DATA_PATH, JSON.stringify(body, null, 2), "utf-8");
+    // 4. Zapis do pliku
+    await writeFile(
+      DATA_PATH,
+      JSON.stringify(body, null, 2),
+      "utf-8"
+    );
+
+    // 5. Rewalidacja cache
+    revalidatePath("/");
+    revalidatePath("/admin");
 
     return NextResponse.json({ success: true });
-  } catch {
+
+  } catch (err) {
+    console.error("[API/content POST]", err);
     return NextResponse.json(
-      { error: "Błąd zapisu danych" },
+      { error: "Błąd serwera" },
       { status: 500 }
     );
   }

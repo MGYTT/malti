@@ -142,26 +142,28 @@ export default function AdminPage() {
 
   // ── Logowanie ─────────────────────────────────────────
   function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    // Weryfikacja przez API — wyślij puste body z hasłem
-    fetch("/api/content", {
-      method:  "POST",
-      headers: {
-        "Content-Type":    "application/json",
-        "x-admin-password": password,
-      },
-      // Wyślij aktualny plik (pobierz najpierw) - tutaj tylko test hasła
-      body: JSON.stringify({}),
-    }).then((r) => {
-      if (r.status === 400) {
-        // 400 = hasło OK, ale puste body - to znaczy hasło jest poprawne
-        setAuthed(true);
-        setAuthError(false);
-      } else if (r.status === 401) {
-        setAuthError(true);
-      }
-    });
-  }
+  e.preventDefault();
+  setAuthError(false);
+
+  fetch("/api/content", {
+    method:  "POST",
+    headers: {
+      "Content-Type":     "application/json",
+      "x-admin-password": password,
+    },
+    body: JSON.stringify({}), // puste body = test hasła
+  }).then(async (r) => {
+    if (r.ok) {
+      // 200 — hasło poprawne
+      setAuthed(true);
+    } else if (r.status === 401) {
+      // 401 — złe hasło
+      setAuthError(true);
+    } else {
+      setAuthError(true);
+    }
+  }).catch(() => setAuthError(true));
+}
 
   // ── Zapis ─────────────────────────────────────────────
   const handleSave = useCallback(async () => {
