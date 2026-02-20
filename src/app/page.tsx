@@ -12,13 +12,16 @@ const DEFAULT_DATA: ContentData = {
   status:  { available: true, text: "Otwarty na współpracę", streamInfo: "" },
   profile: { name: "MALTIXON", tagline: "Polski Streamer & Twórca", preferred: "Discord" },
   links: [
-    { id: "donate",    label: "Donate",        sub: "Tipply — wesprzyj twórcę",       url: "https://tipply.pl/@Malti",                  emoji: "💛", color: "#fbbf24", visible: true },
-    { id: "crypto",    label: "Donate Krypto", sub: "Bitcoin, Ethereum i więcej",      url: "https://donation.streamiverse.io/maltixon", emoji: "₿",  color: "#fb923c", visible: true },
-    { id: "discord",   label: "Discord",       sub: "Dołącz do społeczności",          url: "https://discord.gg/FqAB4cB4pB",             emoji: "💜", color: "#7289da", visible: true },
-    { id: "instagram", label: "Instagram",     sub: "@maltixon • 40K obserwujących",   url: "https://www.instagram.com/maltixon/",       emoji: "📸", color: "#e1306c", visible: true },
-    { id: "tiktok",    label: "TikTok",        sub: "@maltixon — krótkie klipy",       url: "https://www.tiktok.com/@maltixon",          emoji: "🎵", color: "#ffffff", visible: true },
-    { id: "youtube",   label: "YouTube",       sub: "@maltixon • 592K subskrybentów",  url: "https://www.youtube.com/@maltixon",         emoji: "🔴", color: "#ff4444", visible: true },
+    { id: "donate",    label: "Donate",        sub: "Tipply — wesprzyj twórcę",      url: "https://tipply.pl/@Malti",                  emoji: "💛", color: "#fbbf24", visible: true },
+    { id: "crypto",    label: "Donate Krypto", sub: "Bitcoin, Ethereum i więcej",     url: "https://donation.streamiverse.io/maltixon", emoji: "₿",  color: "#fb923c", visible: true },
+    { id: "discord",   label: "Discord",       sub: "Dołącz do społeczności",         url: "https://discord.gg/FqAB4cB4pB",             emoji: "💜", color: "#7289da", visible: true },
+    { id: "instagram", label: "Instagram",     sub: "@maltixon • 40K obserwujących",  url: "https://www.instagram.com/maltixon/",       emoji: "📸", color: "#e1306c", visible: true },
+    { id: "tiktok",    label: "TikTok",        sub: "@maltixon — krótkie klipy",      url: "https://www.tiktok.com/@maltixon",          emoji: "🎵", color: "#ffffff", visible: true },
+    { id: "youtube",   label: "YouTube",       sub: "@maltixon • 592K subskrybentów", url: "https://www.youtube.com/@maltixon",         emoji: "🔴", color: "#ff4444", visible: true },
   ],
+
+  // ← BRAKUJĄCE POLE
+  notifications: [],
 };
 
 async function getContent(): Promise<ContentData> {
@@ -28,7 +31,15 @@ async function getContent(): Promise<ContentData> {
       next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error("fetch failed");
-    return res.json();
+
+    const data: ContentData = await res.json();
+
+    // Wsteczna kompatybilność — gdyby Redis zwrócił stary zapis bez notifications
+    if (!Array.isArray(data.notifications)) {
+      data.notifications = [];
+    }
+
+    return data;
   } catch {
     return DEFAULT_DATA;
   }
