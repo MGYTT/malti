@@ -30,11 +30,7 @@ export type ContentLink = {
 
 // ── NOWY TYP ──────────────────────────────────────────────
 export type NotificationVariant =
-  | "info"      // niebieski  — ogłoszenia
-  | "stream"    // fioletowy  — stream info
-  | "alert"     // żółty      — ważne info
-  | "success"   // zielony    — osiągnięcia
-  | "promo";    // różowy     — promocje/eventy
+  | "info" | "stream" | "alert" | "success" | "promo" | "top-donate"; // ← dodane
 
 export type ContentNotification = {
   id:        string;
@@ -56,3 +52,4 @@ export type ContentData = {
   links:         ContentLink[];
   notifications: ContentNotification[];   // ← NOWE
 };
+

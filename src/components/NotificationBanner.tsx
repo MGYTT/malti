@@ -59,6 +59,16 @@ const VARIANTS: Record<NotificationVariant, {
     badgeBg: "rgba(236,72,153,0.12)",
     dot:     "#f472b6",
   },
+  // ── NOWY WARIANT ─────────────────────────────────────
+  "top-donate": {
+    bg:      "linear-gradient(135deg,rgba(251,191,36,0.13),rgba(252,211,77,0.07))",
+    border:  "rgba(251,191,36,0.45)",
+    glow:    "rgba(251,191,36,0.25)",
+    accent:  "#fcd34d",
+    badge:   "TOP",
+    badgeBg: "rgba(251,191,36,0.18)",
+    dot:     "#fcd34d",
+  },
 };
 
 // ── Hook — dismissed IDs z localStorage ──────────────────
@@ -67,7 +77,6 @@ function useDismissed() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [ready, setReady]         = useState(false);
 
-  // Odczyt dopiero po montażu — unikamy hydration mismatch
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
@@ -78,7 +87,7 @@ function useDismissed() {
         }
       }
     } catch {
-      // localStorage niedostępny (SSR, private mode) — ignoruj
+      // localStorage niedostępny — ignoruj
     } finally {
       setReady(true);
     }
@@ -89,7 +98,7 @@ function useDismissed() {
       const next = new Set<string>(prev);
       next.add(id);
       try {
-        localStorage.setItem(KEY, JSON.stringify(Array.from(next)));
+        localStorage.setItem(KEY, JSON.stringify(Array.from<string>(next)));
       } catch {
         // ignoruj
       }
@@ -126,6 +135,9 @@ function Banner({
     setLeaving(true);
     setTimeout(() => onDismiss(n.id), 380);
   }, [n.id, onDismiss]);
+
+  // Specjalny efekt dla top-donate — złoty shimmer
+  const isTopDonate = n.variant === "top-donate";
 
   return (
     <div
@@ -166,27 +178,51 @@ function Banner({
           left:       0,
           right:      0,
           height:     2,
-          background: `linear-gradient(90deg, transparent, ${v.accent}, transparent)`,
-          opacity:    hovered ? 1 : 0.5,
-          transition: "opacity 0.3s ease",
+          background: isTopDonate
+            // Top donate — animowany złoty shimmer
+            ? `linear-gradient(90deg, transparent, #fcd34d, #fbbf24, #fcd34d, transparent)`
+            : `linear-gradient(90deg, transparent, ${v.accent}, transparent)`,
+          opacity:          hovered ? 1 : 0.6,
+          backgroundSize:   isTopDonate ? "200% 100%" : "100% 100%",
+          animation:        isTopDonate ? "notifShimmer 2s linear infinite" : "none",
+          transition:       "opacity 0.3s ease",
         }}
       />
 
+      {/* Top-donate — subtelny corner glow */}
+      {isTopDonate && (
+        <div
+          aria-hidden="true"
+          style={{
+            position:   "absolute",
+            top:        -20,
+            right:      -20,
+            width:      80,
+            height:     80,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(252,211,77,0.12) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
       {/* Zawartość */}
       <div style={{
-        padding:     "12px 14px",
-        display:     "flex",
-        alignItems:  "flex-start",
-        gap:         12,
+        padding:    "12px 14px",
+        display:    "flex",
+        alignItems: "flex-start",
+        gap:        12,
+        position:   "relative",
       }}>
 
         {/* Emoji + pulsujący dot */}
         <div style={{ position: "relative", flexShrink: 0, marginTop: 1 }}>
           <span style={{
-            fontSize:   20,
+            fontSize:   isTopDonate ? 22 : 20,
             lineHeight: 1,
             display:    "block",
-            filter:     `drop-shadow(0 0 8px ${v.accent})`,
+            filter:     `drop-shadow(0 0 ${isTopDonate ? "10px" : "8px"} ${v.accent})`,
+            animation:  isTopDonate ? "notifBounce 2s ease infinite" : "none",
           }}>
             {n.emoji}
           </span>
@@ -212,10 +248,10 @@ function Banner({
 
           {/* Badge + tytuł */}
           <div style={{
-            display:    "flex",
-            alignItems: "center",
-            flexWrap:   "wrap",
-            gap:        8,
+            display:      "flex",
+            alignItems:   "center",
+            flexWrap:     "wrap",
+            gap:          8,
             marginBottom: n.message ? 4 : n.url ? 6 : 0,
           }}>
             <span style={{
@@ -231,6 +267,8 @@ function Banner({
               padding:       "2px 7px",
               flexShrink:    0,
               userSelect:    "none",
+              // Top donate — złoty text shadow
+              textShadow:    isTopDonate ? `0 0 8px rgba(252,211,77,0.6)` : "none",
             }}>
               {v.badge}
             </span>
@@ -238,7 +276,7 @@ function Banner({
               fontFamily:    "'Inter', sans-serif",
               fontSize:      "13px",
               fontWeight:    800,
-              color:         "#ffffff",
+              color:         isTopDonate ? "#fef3c7" : "#ffffff",
               letterSpacing: "-0.01em",
               lineHeight:    1.2,
               wordBreak:     "break-word",
@@ -252,7 +290,7 @@ function Banner({
             <p style={{
               fontFamily: "'Inter', sans-serif",
               fontSize:   "11px",
-              color:      "rgba(255,255,255,0.5)",
+              color:      isTopDonate ? "rgba(254,243,199,0.6)" : "rgba(255,255,255,0.5)",
               fontWeight: 400,
               lineHeight: 1.5,
               margin:     n.url ? "0 0 8px" : "0",
@@ -339,14 +377,11 @@ export default function NotificationBanner({
 }) {
   const { dismissed, dismiss, ready } = useDismissed();
 
-  // Nie renderuj nic dopóki localStorage nie jest odczytany
-  // (unika hydration mismatch)
   if (!ready) return null;
 
-  // Filtruj: tylko visible, nie-dismissed i nie-wygasłe
   const active = (notifications ?? []).filter((n) => {
-    if (!n?.visible)          return false;
-    if (dismissed.has(n.id))  return false;
+    if (!n?.visible)         return false;
+    if (dismissed.has(n.id)) return false;
     if (n.expiresAt) {
       try {
         const expires = new Date(n.expiresAt);
@@ -364,9 +399,18 @@ export default function NotificationBanner({
     <>
       <style>{`
         @keyframes notifPulse {
-          0%   { box-shadow: 0 0 0 0px rgba(167,139,250,0.7); }
-          70%  { box-shadow: 0 0 0 5px rgba(167,139,250,0);   }
-          100% { box-shadow: 0 0 0 0px rgba(167,139,250,0);   }
+          0%   { box-shadow: 0 0 0 0px  rgba(167,139,250,0.7); }
+          70%  { box-shadow: 0 0 0 5px  rgba(167,139,250,0);   }
+          100% { box-shadow: 0 0 0 0px  rgba(167,139,250,0);   }
+        }
+        @keyframes notifShimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+        @keyframes notifBounce {
+          0%, 100% { transform: translateY(0px);  }
+          40%       { transform: translateY(-3px); }
+          60%       { transform: translateY(-1px); }
         }
       `}</style>
 
