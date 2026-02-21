@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://maltixon.pl/sitemap.xml
+Sitemap: https://malti.pl/sitemap.xml

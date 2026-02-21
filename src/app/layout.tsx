@@ -25,13 +25,13 @@ export const metadata: Metadata = {
 
   // ── Canonical ──
   alternates: {
-    canonical: "https://maltixon.pl",
+    canonical: "https://malti.pl",
   },
 
   // ── Open Graph (Facebook, Discord, LinkedIn) ──
   openGraph: {
     type:        "website",
-    url:         "https://maltixon.pl",
+    url:         "https://malti.pl",
     title:       "MALTIXON",
     description: "Wszystkie potrzebne linki w jednym!",
     siteName:    "MALTIXON",
@@ -103,7 +103,7 @@ const jsonLd = {
   "@context":   "https://schema.org",
   "@type":      "Person",
   name:         "MALTIXON",
-  url:          "https://maltixon.pl",
+  url:          "https://malti.pl",
   description:  "Polski streamer i twórca treści",
   sameAs: [
     "https://www.youtube.com/@maltixon",
